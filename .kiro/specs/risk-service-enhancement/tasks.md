@@ -108,7 +108,7 @@
     - 测试边界情况：零成交量、极大价差、空历史数据
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
 
-  - [~] 5.3 编写 LiquidityRiskMonitor 属性测试
+  - [x] 5.3 编写 LiquidityRiskMonitor 属性测试
     - 创建 `tests/strategy/domain/domain_service/risk/test_liquidity_properties.py`
     - **Property 9: 流动性评分范围**
     - **Validates: Requirements 3.1, 3.6**
