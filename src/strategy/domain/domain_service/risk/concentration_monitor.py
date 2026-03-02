@@ -2,6 +2,10 @@
 ConcentrationMonitor - 集中度风险监控服务
 
 监控持仓在品种、到期日、行权价三个维度的集中度风险，计算 HHI 指数。
+
+职责变更说明:
+- 合约解析职责已移至 ContractHelper (基础设施层)
+- 本服务专注于纯业务逻辑：集中度计算、HHI 计算、风险识别
 """
 import logging
 from collections import defaultdict
@@ -13,6 +17,7 @@ from src.strategy.domain.value_object.risk.risk import (
     ConcentrationMetrics,
     ConcentrationWarning,
 )
+from src.strategy.infrastructure.parsing.contract_helper import ContractHelper
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +30,10 @@ class ConcentrationMonitor:
     1. 计算品种、到期日、行权价三个维度的集中度
     2. 计算 HHI（赫芬达尔指数）作为集中度综合指标
     3. 检测集中度超限并生成警告
+    
+    注意:
+    - 合约解析使用 ContractHelper (infrastructure/parsing)
+    - 到期日提取和行权价分组已移至基础设施层
     
     Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
     """
@@ -287,9 +296,9 @@ class ConcentrationMonitor:
             if dimension == "underlying":
                 key = pos.underlying_vt_symbol
             elif dimension == "expiry":
-                key = self._extract_expiry_from_symbol(pos.vt_symbol)
+                key = ContractHelper.extract_expiry_from_symbol(pos.vt_symbol)
             elif dimension == "strike":
-                key = self._group_by_strike_range(pos.vt_symbol)
+                key = ContractHelper.group_by_strike_range(pos.vt_symbol)
             else:
                 logger.warning(f"Unknown dimension: {dimension}")
                 continue
@@ -324,74 +333,4 @@ class ConcentrationMonitor:
         hhi = sum(ratio ** 2 for ratio in concentration.values())
         return hhi
     
-    def _extract_expiry_from_symbol(self, vt_symbol: str) -> str:
-        """
-        从合约代码中提取到期日
-        
-        期权合约格式示例: "IO2401-C-4000.CFFEX", "m2509-C-2800.DCE"
-        提取年月部分作为到期日标识
-        
-        Args:
-            vt_symbol: 合约代码
-            
-        Returns:
-            到期日字符串（如 "2401", "2509"）
-        """
-        try:
-            # 移除交易所后缀
-            symbol = vt_symbol.split('.')[0]
-            
-            # 期权格式: 字母+年月+期权类型+行权价
-            # 提取年月部分（通常是前面的数字部分）
-            import re
-            match = re.search(r'(\d{4})', symbol)
-            if match:
-                return match.group(1)
-            
-            logger.warning(f"Cannot extract expiry from {vt_symbol}")
-            return "unknown"
-        except Exception as e:
-            logger.warning(f"Error extracting expiry from {vt_symbol}: {e}")
-            return "unknown"
     
-    def _group_by_strike_range(self, vt_symbol: str) -> str:
-        """
-        将行权价分组到区间
-        
-        期权合约格式示例: "IO2401-C-4000.CFFEX", "m2509-C-2800.DCE"
-        
-        Args:
-            vt_symbol: 合约代码
-            
-        Returns:
-            行权价区间字符串（如 "4000-4100", "2800-2900"）
-        """
-        try:
-            # 移除交易所后缀
-            symbol = vt_symbol.split('.')[0]
-            
-            # 提取行权价（最后一个 - 后面的数字）
-            import re
-            match = re.search(r'-([CP])-(\d+)$', symbol)
-            if match:
-                strike = int(match.group(2))
-                
-                # 根据行权价大小确定区间宽度
-                if strike < 1000:
-                    interval = 100
-                elif strike < 5000:
-                    interval = 500
-                else:
-                    interval = 1000
-                
-                # 计算区间下界
-                lower = (strike // interval) * interval
-                upper = lower + interval
-                
-                return f"{lower}-{upper}"
-            
-            logger.warning(f"Cannot extract strike from {vt_symbol}")
-            return "unknown"
-        except Exception as e:
-            logger.warning(f"Error grouping strike from {vt_symbol}: {e}")
-            return "unknown"

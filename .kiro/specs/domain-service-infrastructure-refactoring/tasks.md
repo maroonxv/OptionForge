@@ -168,7 +168,7 @@
     - _需求: 2.4, 5.2, 8.4_
 
 - [ ] 9. 重构 ConcentrationMonitor 领域服务
-  - [ ] 9.1 使用 ContractHelper 替代内部解析方法
+  - [x] 9.1 使用 ContractHelper 替代内部解析方法
     - 修改 `src/strategy/domain/domain_service/risk/concentration_monitor.py`
     - 导入 ContractHelper
     - 将 `_extract_expiry_from_symbol` 调用替换为 `ContractHelper.extract_expiry_from_symbol`
