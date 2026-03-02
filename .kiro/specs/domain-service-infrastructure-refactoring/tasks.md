@@ -68,7 +68,7 @@
     - 处理异常情况，返回 "unknown"
     - _需求: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [-] 3.2 编写 ContractHelper 扩展功能单元测试
+  - [x] 3.2 编写 ContractHelper 扩展功能单元测试
     - 创建 `tests/strategy/infrastructure/parsing/test_contract_helper_extension.py`
     - 测试各种合约格式的到期日提取（IO、MO、HO、m、c 等）
     - 测试不同行权价的区间分组
@@ -76,7 +76,7 @@
     - 测试异常情况（无效格式、缺失信息）
     - _需求: 7.1, 7.5_
 
-  - [ ] 3.3 编写 ContractHelper 属性测试
+  - [x] 3.3 编写 ContractHelper 属性测试
     - 创建 `tests/strategy/infrastructure/parsing/test_contract_helper_properties.py`
     - **属性 3: 合约代码到期日提取正确性**
     - **验证需求: 3.2, 4.3**
