@@ -195,7 +195,7 @@
   - 如有问题请询问用户
 
 - [-] 12. 运行回归测试
-  - [-] 12.1 运行执行服务相关测试
+  - [x] 12.1 运行执行服务相关测试
     - 运行 `tests/strategy/domain/domain_service/test_execution_integration.py`
     - 运行 `tests/strategy/domain/domain_service/test_execution_coordinator_properties.py`
     - 运行 `tests/strategy/domain/domain_service/test_execution_serialization_properties.py`
@@ -203,7 +203,7 @@
     - 确保所有测试通过
     - _需求: 5.5, 7.1, 7.2_
 
-  - [ ] 12.2 运行风险服务相关测试
+  - [x] 12.2 运行风险服务相关测试
     - 运行 `tests/strategy/domain/domain_service/risk/test_risk_integration.py`
     - 运行 `tests/strategy/domain/domain_service/risk/test_concentration_properties.py`
     - 运行 `tests/strategy/domain/domain_service/risk/test_concentration_monitor.py`
@@ -212,7 +212,7 @@
     - 确保所有测试通过
     - _需求: 5.5, 7.1, 7.2_
 
-  - [ ] 12.3 编写执行服务重构集成测试
+  - [-] 12.3 编写执行服务重构集成测试
     - 创建 `tests/strategy/domain/domain_service/test_execution_refactoring_integration.py`
     - 测试使用序列化器保存和恢复 SmartOrderExecutor 状态
     - 测试使用序列化器保存和恢复 AdvancedOrderScheduler 状态
