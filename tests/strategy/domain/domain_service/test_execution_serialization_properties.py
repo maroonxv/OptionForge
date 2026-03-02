@@ -48,6 +48,12 @@ from src.strategy.domain.value_object.trading.order_instruction import (  # noqa
     Offset,
     OrderType,
 )
+from src.strategy.infrastructure.persistence.smart_order_executor_serializer import (  # noqa: E402
+    SmartOrderExecutorSerializer,
+)
+from src.strategy.infrastructure.persistence.advanced_order_scheduler_serializer import (  # noqa: E402
+    AdvancedOrderSchedulerSerializer,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -154,8 +160,8 @@ class TestProperty10SmartOrderExecutorRoundTrip:
             executor._orders[order.vt_orderid] = order
 
         # 序列化 → 反序列化
-        data = executor.to_dict()
-        restored = SmartOrderExecutor.from_dict(data)
+        data = SmartOrderExecutorSerializer.to_dict(executor)
+        restored = SmartOrderExecutorSerializer.from_dict(data)
 
         # 验证 config 字段相同
         assert restored.config.timeout_seconds == config.timeout_seconds
@@ -228,8 +234,8 @@ class TestProperty11AdvancedOrderSchedulerRoundTrip:
         scheduler.submit_iceberg(instruction=instruction, batch_size=batch_size)
 
         # 序列化 → 反序列化
-        data = scheduler.to_dict()
-        restored = AdvancedOrderScheduler.from_dict(data)
+        data = AdvancedOrderSchedulerSerializer.to_dict(scheduler)
+        restored = AdvancedOrderSchedulerSerializer.from_dict(data)
 
         # 验证 config 字段相同
         assert restored.config.default_batch_size == config.default_batch_size

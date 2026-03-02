@@ -36,10 +36,18 @@ for _name in [
 from src.main.config.domain_service_config_loader import (  # noqa: E402
     load_advanced_scheduler_config,
     load_smart_order_executor_config,
+    create_smart_order_executor,
+    create_advanced_order_scheduler,
 )
 from src.strategy.domain.value_object.trading.order_execution import (  # noqa: E402
     AdvancedSchedulerConfig,
     OrderExecutionConfig,
+)
+from src.strategy.domain.domain_service.execution.smart_order_executor import (  # noqa: E402
+    SmartOrderExecutor,
+)
+from src.strategy.domain.domain_service.execution.advanced_order_scheduler import (  # noqa: E402
+    AdvancedOrderScheduler,
 )
 
 # ---------------------------------------------------------------------------
@@ -369,7 +377,7 @@ class TestProperty3SmartOrderExecutorFromYamlConfigConsistency:
         **Validates: Requirements 2.1, 2.3, 2.4**
         """
         defaults = OrderExecutionConfig()
-        executor = SmartOrderExecutor.from_yaml_config(config_dict)
+        executor = create_smart_order_executor(config_dict)
         result = executor.config
 
         # 已知字段列表
@@ -420,7 +428,7 @@ class TestProperty4AdvancedOrderSchedulerFromYamlConfigConsistency:
         **Validates: Requirements 2.2, 2.3, 2.4**
         """
         defaults = AdvancedSchedulerConfig()
-        scheduler = AdvancedOrderScheduler.from_yaml_config(config_dict)
+        scheduler = create_advanced_order_scheduler(config_dict)
         result = scheduler.config
 
         # 已知字段列表

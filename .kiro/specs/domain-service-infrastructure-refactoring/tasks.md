@@ -189,13 +189,13 @@
     - 更新类文档字符串
     - _需求: 3.5, 4.4, 5.4, 8.4_
 
-- [-] 11. 检查点 - 确保领域服务重构完成
+- [x] 11. 检查点 - 确保领域服务重构完成
   - 检查所有领域服务的修改是否正确
   - 确保没有遗留的基础设施职责
   - 如有问题请询问用户
 
-- [ ] 12. 运行回归测试
-  - [ ] 12.1 运行执行服务相关测试
+- [-] 12. 运行回归测试
+  - [-] 12.1 运行执行服务相关测试
     - 运行 `tests/strategy/domain/domain_service/test_execution_integration.py`
     - 运行 `tests/strategy/domain/domain_service/test_execution_coordinator_properties.py`
     - 运行 `tests/strategy/domain/domain_service/test_execution_serialization_properties.py`
