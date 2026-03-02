@@ -6,7 +6,7 @@
 
 ## 任务列表
 
-- [-] 1. 创建 SmartOrderExecutor 序列化器
+- [x] 1. 创建 SmartOrderExecutor 序列化器
   - [x] 1.1 实现 SmartOrderExecutorSerializer 类
     - 创建 `src/strategy/infrastructure/persistence/smart_order_executor_serializer.py`
     - 实现 `to_dict` 静态方法，序列化配置和订单状态
@@ -23,7 +23,7 @@
     - 测试错误处理（None 输入、无效数据）
     - _需求: 7.1, 7.5_
 
-  - [-] 1.3 编写 SmartOrderExecutorSerializer 属性测试
+  - [x] 1.3 编写 SmartOrderExecutorSerializer 属性测试
     - 创建 `tests/strategy/infrastructure/persistence/test_smart_order_executor_serializer_properties.py`
     - **属性 1: SmartOrderExecutor 序列化往返保持等价性**
     - **验证需求: 1.5**
@@ -32,8 +32,8 @@
     - 配置至少 100 次迭代
     - _需求: 1.5_
 
-- [ ] 2. 创建 AdvancedOrderScheduler 序列化器
-  - [ ] 2.1 实现 AdvancedOrderSchedulerSerializer 类
+- [-] 2. 创建 AdvancedOrderScheduler 序列化器
+  - [x] 2.1 实现 AdvancedOrderSchedulerSerializer 类
     - 创建 `src/strategy/infrastructure/persistence/advanced_order_scheduler_serializer.py`
     - 实现 `to_dict` 静态方法，序列化配置和订单状态
     - 实现 `from_dict` 静态方法，从字典恢复实例
@@ -41,7 +41,7 @@
     - 正确处理 datetime 对象的序列化和反序列化
     - _需求: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 2.2 编写 AdvancedOrderSchedulerSerializer 单元测试
+  - [-] 2.2 编写 AdvancedOrderSchedulerSerializer 单元测试
     - 创建 `tests/strategy/infrastructure/persistence/test_advanced_order_scheduler_serializer.py`
     - 测试基本序列化和反序列化
     - 测试包含复杂订单结构的序列化
