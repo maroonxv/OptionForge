@@ -148,7 +148,7 @@
     - **Property 16: 集中度单调性**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.6**
 
-- [~] 7. 实现 TimeDecayMonitor（时间衰减监控服务）
+- [x] 7. 实现 TimeDecayMonitor（时间衰减监控服务）
   - [x] 7.1 创建 `src/strategy/domain/domain_service/risk/time_decay_monitor.py`
     - 实现 `__init__` 接受 `TimeDecayConfig` 参数
     - 实现 `calculate_portfolio_theta` 方法：计算组合总 Theta 和每日预期衰减金额
@@ -175,7 +175,7 @@
     - **Property 19: 到期分组完整性**
     - **Validates: Requirements 5.5**
 
-- [~] 8. 检查点 - 流动性、集中度和时间衰减服务验证
+- [x] 8. 检查点 - 流动性、集中度和时间衰减服务验证
   - 确保所有测试通过，如有问题请向用户确认。
 
 - [~] 9. 配置文件和配置加载
