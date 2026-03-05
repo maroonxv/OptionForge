@@ -282,12 +282,10 @@ class StrategyEntry(StrategyTemplate):
         self.exec_gateway = VnpyTradeExecutionGateway(self)
 
         variant_name = self.strategy_name
-        project_root = Path(__file__).resolve().parents[2]
-        snapshot_path = str(project_root / "data" / "monitor" / f"snapshot_{variant_name}.pkl")
 
         monitor_db_config = {
             "host": os.getenv("VNPY_DATABASE_HOST", "") or "",
-            "port": int(os.getenv("VNPY_DATABASE_PORT", "3306") or 3306),
+            "port": int(os.getenv("VNPY_DATABASE_PORT", "5432") or 5432),
             "user": os.getenv("VNPY_DATABASE_USER", "") or "",
             "password": os.getenv("VNPY_DATABASE_PASSWORD", "") or "",
             "database": os.getenv("VNPY_DATABASE_DATABASE", "") or "",
@@ -295,7 +293,6 @@ class StrategyEntry(StrategyTemplate):
         self.monitor = StrategyMonitor(
             variant_name=variant_name,
             monitor_instance_id=os.getenv("MONITOR_INSTANCE_ID", "default") or "default",
-            snapshot_path=snapshot_path,
             monitor_db_config=monitor_db_config,
             logger=self.logger
         )

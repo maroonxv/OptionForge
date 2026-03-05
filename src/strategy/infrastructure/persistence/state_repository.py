@@ -24,8 +24,8 @@ from src.strategy.infrastructure.persistence.json_serializer import (
     CURRENT_SCHEMA_VERSION,
     JsonSerializer,
 )
-from src.strategy.infrastructure.persistence.strategy_state_model import (
-    StrategyStateModel,
+from src.strategy.infrastructure.persistence.model.strategy_state_po import (
+    StrategyStatePO,
 )
 
 
@@ -73,9 +73,9 @@ class StateRepository:
         stored_data, compressed = self._maybe_compress(json_str)
 
         db = self._database_factory.get_peewee_db()
-        StrategyStateModel._meta.database = db
+        StrategyStatePO._meta.database = db
 
-        StrategyStateModel.create(
+        StrategyStatePO.create(
             strategy_name=strategy_name,
             snapshot_json=stored_data,
             schema_version=CURRENT_SCHEMA_VERSION,
@@ -96,12 +96,12 @@ class StateRepository:
         - 成功 → 返回 Dict
         """
         db = self._database_factory.get_peewee_db()
-        StrategyStateModel._meta.database = db
+        StrategyStatePO._meta.database = db
 
         record = (
-            StrategyStateModel.select()
-            .where(StrategyStateModel.strategy_name == strategy_name)
-            .order_by(StrategyStateModel.saved_at.desc())
+            StrategyStatePO.select()
+            .where(StrategyStatePO.strategy_name == strategy_name)
+            .order_by(StrategyStatePO.saved_at.desc())
             .first()
         )
 
@@ -125,12 +125,12 @@ class StateRepository:
     def verify_integrity(self, strategy_name: str) -> bool:
         """验证最新记录完整性：检查 JSON 可解析且包含 schema_version。"""
         db = self._database_factory.get_peewee_db()
-        StrategyStateModel._meta.database = db
+        StrategyStatePO._meta.database = db
 
         record = (
-            StrategyStateModel.select()
-            .where(StrategyStateModel.strategy_name == strategy_name)
-            .order_by(StrategyStateModel.saved_at.desc())
+            StrategyStatePO.select()
+            .where(StrategyStatePO.strategy_name == strategy_name)
+            .order_by(StrategyStatePO.saved_at.desc())
             .first()
         )
 
@@ -205,13 +205,13 @@ class StateRepository:
             int: 删除的记录数
         """
         db = self._database_factory.get_peewee_db()
-        StrategyStateModel._meta.database = db
+        StrategyStatePO._meta.database = db
 
         # 先查询最新记录 ID
         latest = (
-            StrategyStateModel.select(StrategyStateModel.id)
-            .where(StrategyStateModel.strategy_name == strategy_name)
-            .order_by(StrategyStateModel.saved_at.desc())
+            StrategyStatePO.select(StrategyStatePO.id)
+            .where(StrategyStatePO.strategy_name == strategy_name)
+            .order_by(StrategyStatePO.saved_at.desc())
             .first()
         )
         
@@ -223,11 +223,11 @@ class StateRepository:
 
         # 删除旧记录，但排除最新记录
         deleted = (
-            StrategyStateModel.delete()
+            StrategyStatePO.delete()
             .where(
-                (StrategyStateModel.strategy_name == strategy_name)
-                & (StrategyStateModel.saved_at < cutoff)
-                & (StrategyStateModel.id != latest.id)  # 保留最新记录
+                (StrategyStatePO.strategy_name == strategy_name)
+                & (StrategyStatePO.saved_at < cutoff)
+                & (StrategyStatePO.id != latest.id)  # 保留最新记录
             )
             .execute()
         )

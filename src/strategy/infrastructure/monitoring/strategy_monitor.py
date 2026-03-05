@@ -1,39 +1,51 @@
 import json
 import os
-import pickle
-import pymysql
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pathlib import Path
 
-from ...domain.aggregate.target_instrument_aggregate import InstrumentManager
+from peewee import PostgresqlDatabase
+
+from ...domain.aggregate.instrument_manager import InstrumentManager
 from ...domain.aggregate.position_aggregate import PositionAggregate
+from src.strategy.infrastructure.persistence.model.monitor_signal_event_po import (
+    MonitorSignalEventPO,
+)
+from src.strategy.infrastructure.persistence.model.monitor_signal_snapshot_po import (
+    MonitorSignalSnapshotPO,
+)
 
 
 class StrategyMonitor:
     """
-    负责策略的监控与快照逻辑
+    负责策略的监控与快照逻辑。
+
+    统一使用 Postgres 持久化，不再落地本地文件快照。
     """
-    
+
     def __init__(
         self,
         variant_name: str,
         monitor_instance_id: str,
-        snapshot_path: str,
         monitor_db_config: Optional[Dict[str, Any]] = None,
-        logger: Any = None
+        logger: Any = None,
     ):
         self.variant_name = variant_name
         self.monitor_instance_id = monitor_instance_id
-        self.snapshot_path = snapshot_path
         self._monitor_db_config = monitor_db_config or {}
         self.logger = logger
-        
-        self.monitor_db_enabled = str(os.getenv("MONITOR_DB_ENABLED", "1")).lower() not in ("0", "false", "no", "off", "")
+
+        self.monitor_db_enabled = str(os.getenv("MONITOR_DB_ENABLED", "1")).lower() not in (
+            "0",
+            "false",
+            "no",
+            "off",
+            "",
+        )
         if not self._monitor_db_config.get("host"):
-             self.monitor_db_enabled = False
+            self.monitor_db_enabled = False
 
         self._monitor_tables_ensured = False
+        self._monitor_db: Optional[PostgresqlDatabase] = None
         self._last_status_map: Dict[str, Dict[str, bool]] = {}
 
     def _monitor_db_available(self) -> bool:
@@ -42,74 +54,43 @@ class StrategyMonitor:
         cfg = self._monitor_db_config
         return bool(cfg.get("host") and cfg.get("user") and cfg.get("database"))
 
-    def _monitor_db_connect(self):
+    def _monitor_db_connect(self) -> Optional[PostgresqlDatabase]:
         if not self._monitor_db_available():
             return None
         try:
-            return pymysql.connect(
-                host=self._monitor_db_config["host"],
-                port=int(self._monitor_db_config["port"]),
-                user=self._monitor_db_config["user"],
-                password=self._monitor_db_config["password"],
-                database=self._monitor_db_config["database"],
-                charset="utf8mb4",
-                autocommit=True,
-            )
+            if self._monitor_db is None:
+                self._monitor_db = PostgresqlDatabase(
+                    self._monitor_db_config["database"],
+                    user=self._monitor_db_config["user"],
+                    password=self._monitor_db_config.get("password", ""),
+                    host=self._monitor_db_config["host"],
+                    port=int(self._monitor_db_config.get("port", 5432)),
+                    autorollback=True,
+                )
+            self._monitor_db.connect(reuse_if_open=True)
+            return self._monitor_db
         except Exception:
             return None
+
+    @staticmethod
+    def _bind_models(db: PostgresqlDatabase) -> None:
+        MonitorSignalSnapshotPO._meta.database = db
+        MonitorSignalEventPO._meta.database = db
 
     def _ensure_monitor_tables(self) -> None:
         if self._monitor_tables_ensured:
             return
-        conn = self._monitor_db_connect()
-        if conn is None:
+        db = self._monitor_db_connect()
+        if db is None:
             return
+
         try:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS monitor_signal_snapshot (
-                      id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                      variant VARCHAR(64) NOT NULL,
-                      instance_id VARCHAR(64) NOT NULL,
-                      updated_at DATETIME(6) NOT NULL,
-                      bar_dt DATETIME(6) NULL,
-                      bar_interval VARCHAR(16) NULL,
-                      bar_window INT NULL,
-                      payload_json JSON NOT NULL,
-                      UNIQUE KEY uk_variant_instance (variant, instance_id),
-                      KEY idx_updated_at (updated_at),
-                      KEY idx_bar_dt (bar_dt)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-                    """
-                )
-                cursor.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS monitor_signal_event (
-                      id BIGINT AUTO_INCREMENT PRIMARY KEY,
-                      variant VARCHAR(64) NOT NULL,
-                      instance_id VARCHAR(64) NOT NULL,
-                      vt_symbol VARCHAR(64) NOT NULL,
-                      bar_dt DATETIME(6) NULL,
-                      event_type VARCHAR(32) NOT NULL,
-                      event_key VARCHAR(192) NOT NULL,
-                      created_at DATETIME(6) NOT NULL,
-                      payload_json JSON NOT NULL,
-                      UNIQUE KEY uk_event_key (event_key),
-                      KEY idx_variant_created (variant, created_at),
-                      KEY idx_symbol_bar (vt_symbol, bar_dt),
-                      KEY idx_type_created (event_type, created_at)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-                    """
-                )
+            self._bind_models(db)
+            with db.connection_context():
+                db.create_tables([MonitorSignalSnapshotPO, MonitorSignalEventPO], safe=True)
             self._monitor_tables_ensured = True
         except Exception:
             return
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def _upsert_monitor_snapshot(
         self,
@@ -119,46 +100,46 @@ class StrategyMonitor:
         bar_window: Optional[int],
     ) -> None:
         self._ensure_monitor_tables()
-        conn = self._monitor_db_connect()
-        if conn is None:
+        db = self._monitor_db_connect()
+        if db is None:
             return
+
         now_dt = datetime.now()
         try:
             payload_text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         except Exception:
             return
+
         try:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT INTO monitor_signal_snapshot
-                      (variant, instance_id, updated_at, bar_dt, bar_interval, bar_window, payload_json)
-                    VALUES
-                      (%s, %s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE
-                      updated_at=VALUES(updated_at),
-                      bar_dt=VALUES(bar_dt),
-                      bar_interval=VALUES(bar_interval),
-                      bar_window=VALUES(bar_window),
-                      payload_json=VALUES(payload_json)
-                    """,
-                    (
-                        self.variant_name,
-                        self.monitor_instance_id,
-                        now_dt,
-                        bar_dt,
-                        bar_interval,
-                        bar_window,
-                        payload_text,
-                    ),
+            self._bind_models(db)
+            with db.connection_context():
+                (
+                    MonitorSignalSnapshotPO.insert(
+                        variant=self.variant_name,
+                        instance_id=self.monitor_instance_id,
+                        updated_at=now_dt,
+                        bar_dt=bar_dt,
+                        bar_interval=bar_interval,
+                        bar_window=bar_window,
+                        payload_json=payload_text,
+                    )
+                    .on_conflict(
+                        conflict_target=[
+                            MonitorSignalSnapshotPO.variant,
+                            MonitorSignalSnapshotPO.instance_id,
+                        ],
+                        update={
+                            MonitorSignalSnapshotPO.updated_at: now_dt,
+                            MonitorSignalSnapshotPO.bar_dt: bar_dt,
+                            MonitorSignalSnapshotPO.bar_interval: bar_interval,
+                            MonitorSignalSnapshotPO.bar_window: bar_window,
+                            MonitorSignalSnapshotPO.payload_json: payload_text,
+                        },
+                    )
+                    .execute()
                 )
         except Exception:
             return
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def insert_monitor_event(
         self,
@@ -170,42 +151,37 @@ class StrategyMonitor:
         created_at: Optional[datetime] = None,
     ) -> None:
         self._ensure_monitor_tables()
-        conn = self._monitor_db_connect()
-        if conn is None:
+        db = self._monitor_db_connect()
+        if db is None:
             return
+
         if not created_at:
             created_at = datetime.now()
+
         try:
             payload_text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         except Exception:
             return
+
         try:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    INSERT IGNORE INTO monitor_signal_event
-                      (variant, instance_id, vt_symbol, bar_dt, event_type, event_key, created_at, payload_json)
-                    VALUES
-                      (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (
-                        self.variant_name,
-                        self.monitor_instance_id,
-                        vt_symbol or "",
-                        bar_dt,
-                        event_type,
-                        event_key,
-                        created_at,
-                        payload_text,
-                    ),
+            self._bind_models(db)
+            with db.connection_context():
+                (
+                    MonitorSignalEventPO.insert(
+                        variant=self.variant_name,
+                        instance_id=self.monitor_instance_id,
+                        vt_symbol=vt_symbol or "",
+                        bar_dt=bar_dt,
+                        event_type=event_type,
+                        event_key=event_key,
+                        created_at=created_at,
+                        payload_json=payload_text,
+                    )
+                    .on_conflict_ignore()
+                    .execute()
                 )
         except Exception:
             return
-        finally:
-            try:
-                conn.close()
-            except Exception:
-                pass
 
     def parse_bar_dt(self, bar_dt_value: Any) -> Optional[datetime]:
         if isinstance(bar_dt_value, datetime):
@@ -224,10 +200,10 @@ class StrategyMonitor:
         self,
         target_aggregate: InstrumentManager,
         position_aggregate: PositionAggregate,
-        strategy_context: Any
+        strategy_context: Any,
     ) -> None:
         """
-        生成并保存用于 Web 监控的快照数据 (轻量级)
+        生成并保存用于 Web 监控的快照数据（统一写入 Postgres）。
         """
         try:
             max_bars = 300
@@ -263,7 +239,7 @@ class StrategyMonitor:
                             row.get("open"),
                             row.get("close"),
                             low,
-                            high
+                            high,
                         ])
                         volumes.append(row.get("volume", 0))
 
@@ -277,7 +253,9 @@ class StrategyMonitor:
                 except Exception:
                     tail_last_dt = None
                 tail_last_dt_parsed = self.parse_bar_dt(tail_last_dt)
-                if tail_last_dt_parsed and (snapshot_bar_dt is None or tail_last_dt_parsed > snapshot_bar_dt):
+                if tail_last_dt_parsed and (
+                    snapshot_bar_dt is None or tail_last_dt_parsed > snapshot_bar_dt
+                ):
                     snapshot_bar_dt = tail_last_dt_parsed
                 instruments_data[vt_symbol] = {
                     "dates": dates,
@@ -286,19 +264,21 @@ class StrategyMonitor:
                     "indicators": instrument.indicators if hasattr(instrument, "indicators") else {},
                     "status": status,
                     "last_price": float(getattr(instrument, "latest_close", 0.0) or 0.0),
-                    "delivery_month": "Other"
+                    "delivery_month": "Other",
                 }
 
             positions_list: List[Dict[str, Any]] = []
             try:
                 for pos in position_aggregate.get_all_positions():
-                    positions_list.append({
-                        "vt_symbol": getattr(pos, "vt_symbol", ""),
-                        "direction": str(getattr(pos, "direction", "")),
-                        "volume": getattr(pos, "volume", 0),
-                        "price": getattr(pos, "open_price", 0),
-                        "pnl": 0.0
-                    })
+                    positions_list.append(
+                        {
+                            "vt_symbol": getattr(pos, "vt_symbol", ""),
+                            "direction": str(getattr(pos, "direction", "")),
+                            "volume": getattr(pos, "volume", 0),
+                            "price": getattr(pos, "open_price", 0),
+                            "pnl": 0.0,
+                        }
+                    )
             except Exception:
                 positions_list = []
 
@@ -309,15 +289,17 @@ class StrategyMonitor:
                 else:
                     orders = getattr(position_aggregate, "_pending_orders", {}).values()
                 for order in orders:
-                    orders_list.append({
-                        "vt_orderid": getattr(order, "vt_orderid", ""),
-                        "vt_symbol": getattr(order, "vt_symbol", ""),
-                        "direction": str(getattr(order, "direction", "")),
-                        "offset": str(getattr(order, "offset", "")),
-                        "volume": getattr(order, "volume", 0),
-                        "price": getattr(order, "price", 0),
-                        "status": str(getattr(order, "status", "Unknown"))
-                    })
+                    orders_list.append(
+                        {
+                            "vt_orderid": getattr(order, "vt_orderid", ""),
+                            "vt_symbol": getattr(order, "vt_symbol", ""),
+                            "direction": str(getattr(order, "direction", "")),
+                            "offset": str(getattr(order, "offset", "")),
+                            "volume": getattr(order, "volume", 0),
+                            "price": getattr(order, "price", 0),
+                            "status": str(getattr(order, "status", "Unknown")),
+                        }
+                    )
             except Exception:
                 orders_list = []
 
@@ -326,7 +308,7 @@ class StrategyMonitor:
                 "variant": self.variant_name,
                 "instruments": instruments_data,
                 "positions": positions_list,
-                "orders": orders_list
+                "orders": orders_list,
             }
 
             bar_interval = str(getattr(strategy_context, "bar_interval", "") or "") or None
@@ -368,33 +350,13 @@ class StrategyMonitor:
                 bar_interval=bar_interval,
                 bar_window=bar_window,
             )
-            
-            # 确保目录存在
+
             if self.logger:
-                self.logger.info(f"Dumping snapshot to: {self.snapshot_path}")
-            os.makedirs(os.path.dirname(self.snapshot_path), exist_ok=True)
-            
-            # 使用临时文件写入 + 重命名原子操作
-            temp_path = self.snapshot_path + ".tmp"
-            with open(temp_path, "wb") as f:
-                pickle.dump(snapshot_data, f)
-            
-            # 原子替换
-            if os.path.exists(self.snapshot_path):
-                try:
-                    os.replace(temp_path, self.snapshot_path)
-                except OSError:
-                    if self.logger:
-                        self.logger.warning(f"Snapshot update failed (locked?): {self.snapshot_path}")
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
-            else:
-                os.rename(temp_path, self.snapshot_path)
-                
+                self.logger.info(
+                    f"监控快照已写入 Postgres: variant={self.variant_name}, instance={self.monitor_instance_id}"
+                )
+
         except Exception as e:
-            # 记录错误
             if self.logger:
                 self.logger.error(f"保存监控快照失败: {str(e)}")
             pass
