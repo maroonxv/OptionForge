@@ -37,7 +37,6 @@ from .domain.domain_service.selection.future_selection_service import FutureSele
 from .domain.domain_service.pricing import GreeksCalculator
 from .domain.domain_service.risk.portfolio_risk_aggregator import PortfolioRiskAggregator
 from .domain.domain_service.execution.smart_order_executor import SmartOrderExecutor
-from .domain.entity.position import Position
 from .domain.event.event_types import (
     EVENT_STRATEGY_ALERT,
     DomainEvent,
@@ -490,7 +489,38 @@ class StrategyEntry(StrategyTemplate):
             if current_dt.hour == 14 and current_dt.minute == 50:
                 if not self.rollover_check_done:
                     self.logger.info(f"触发每日换月检查: {current_dt}")
-                    self._check_universe_rollover(current_dt)
+                    if self.target_aggregate and self.market_gateway:
+                        for product in self.target_products:
+                            try:
+                                current_vt = self.target_aggregate.get_active_contract(product)
+                                if not current_vt:
+                                    continue
+
+                                all_contracts = self.market_gateway.get_all_contracts()
+                                product_contracts = [
+                                    c for c in all_contracts
+                                    if ContractHelper.is_contract_of_product(c, product)
+                                ]
+                                if not product_contracts:
+                                    continue
+
+                                market_data = self._build_future_market_data(product_contracts)
+                                dominant = self.future_selection_service.select_dominant_contract(
+                                    product_contracts,
+                                    current_dt.date(),
+                                    market_data=market_data,
+                                    log_func=self.logger.info,
+                                )
+                                if dominant and dominant.vt_symbol != current_vt:
+                                    new_vt = dominant.vt_symbol
+                                    self.logger.info(
+                                        f"品种 {product} 换月: {current_vt} -> {new_vt}"
+                                    )
+                                    self.target_aggregate.set_active_contract(product, new_vt)
+                                    self.target_aggregate.get_or_create_instrument(new_vt)
+                                    self.market_gateway.subscribe(new_vt)
+                            except Exception as e:
+                                self.logger.error(f"品种 {product} 换月检查失败: {e}")
                     self.rollover_check_done = True
             else:
                 self.rollover_check_done = False
@@ -614,7 +644,12 @@ class StrategyEntry(StrategyTemplate):
                     open_signal = self.signal_service.check_open_signal(instrument)
                     if open_signal:
                         self.logger.info(f"检测到开仓信号 [{vt_symbol}]: {open_signal}")
-                        self._execute_open(vt_symbol, open_signal)
+                        # TODO: 实现完整开仓逻辑
+                        # 1. 调用 OptionSelectorService 选择期权合约
+                        # 2. 调用 PositionSizingService 计算仓位
+                        # 3. 调用 VnpyTradeExecutionGateway 下单
+                        # 4. 在 PositionAggregate 中创建持仓记录
+                        self.logger.info(f"执行开仓: {vt_symbol}, 信号: {open_signal}")
                 except Exception as e:
                     self.logger.error(f"开仓信号检查失败 [{vt_symbol}]: {e}")
 
@@ -629,7 +664,10 @@ class StrategyEntry(StrategyTemplate):
                             self.logger.info(
                                 f"检测到平仓信号 [{position.vt_symbol}]: {close_signal}"
                             )
-                            self._execute_close(position, close_signal)
+                            # TODO: 实现完整平仓逻辑
+                            # 1. 调用 PositionSizingService 计算平仓量
+                            # 2. 调用 VnpyTradeExecutionGateway 下单
+                            self.logger.info(f"执行平仓: {position.vt_symbol}, 信号: {close_signal}")
                 except Exception as e:
                     self.logger.error(f"平仓信号检查失败 [{vt_symbol}]: {e}")
 
@@ -638,34 +676,6 @@ class StrategyEntry(StrategyTemplate):
 
         # 5. 记录快照
         self._record_snapshot()
-
-    def _execute_open(self, underlying_vt_symbol: str, signal: str) -> None:
-        """
-        执行开仓逻辑
-
-        Args:
-            underlying_vt_symbol: 标的合约代码
-            signal: 开仓信号字符串
-        """
-        # TODO: 实现完整开仓逻辑
-        # 1. 调用 OptionSelectorService 选择期权合约
-        # 2. 调用 PositionSizingService 计算仓位
-        # 3. 调用 VnpyTradeExecutionGateway 下单
-        # 4. 在 PositionAggregate 中创建持仓记录
-        self.logger.info(f"执行开仓: {underlying_vt_symbol}, 信号: {signal}")
-
-    def _execute_close(self, position: Position, signal: str) -> None:
-        """
-        执行平仓逻辑
-
-        Args:
-            position: 持仓对象
-            signal: 平仓信号字符串
-        """
-        # TODO: 实现完整平仓逻辑
-        # 1. 调用 PositionSizingService 计算平仓量
-        # 2. 调用 VnpyTradeExecutionGateway 下单
-        self.logger.info(f"执行平仓: {position.vt_symbol}, 信号: {signal}")
 
     # ═══════════════════════════════════════════════════════════════════
     #  Universe 管理 (原 handle_universe_validation / handle_universe_rollover_check)
@@ -746,44 +756,6 @@ class StrategyEntry(StrategyTemplate):
             )
 
         return data
-
-    def _check_universe_rollover(self, current_dt: datetime) -> None:
-        """
-        检查合约换月
-
-        遍历 target_products，检查是否需要切换到新的主力合约。
-        """
-        if not self.target_aggregate or not self.market_gateway:
-            return
-
-        for product in self.target_products:
-            try:
-                current_vt = self.target_aggregate.get_active_contract(product)
-                if not current_vt:
-                    continue
-
-                all_contracts = self.market_gateway.get_all_contracts()
-                product_contracts = [
-                    c for c in all_contracts
-                    if ContractHelper.is_contract_of_product(c, product)
-                ]
-                if not product_contracts:
-                    continue
-
-                market_data = self._build_future_market_data(product_contracts)
-                dominant = self.future_selection_service.select_dominant_contract(
-                    product_contracts, current_dt.date(), market_data=market_data, log_func=self.logger.info
-                )
-                if dominant and dominant.vt_symbol != current_vt:
-                    new_vt = dominant.vt_symbol
-                    self.logger.info(
-                        f"品种 {product} 换月: {current_vt} -> {new_vt}"
-                    )
-                    self.target_aggregate.set_active_contract(product, new_vt)
-                    self.target_aggregate.get_or_create_instrument(new_vt)
-                    self.market_gateway.subscribe(new_vt)
-            except Exception as e:
-                self.logger.error(f"品种 {product} 换月检查失败: {e}")
 
     # ═══════════════════════════════════════════════════════════════════
     #  状态持久化
