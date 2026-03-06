@@ -41,8 +41,8 @@ from src.strategy.infrastructure.persistence.state_repository import (
     ArchiveNotFound,
     StateRepository,
 )
-from src.strategy.infrastructure.persistence.strategy_state_model import (
-    StrategyStateModel,
+from src.strategy.infrastructure.persistence.model.strategy_state_po import (
+    StrategyStatePO as StrategyStateModel,
 )
 
 

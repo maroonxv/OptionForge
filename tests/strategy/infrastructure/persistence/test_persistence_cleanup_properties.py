@@ -28,8 +28,8 @@ from src.main.bootstrap.database_factory import DatabaseFactory
 from src.strategy.infrastructure.persistence.json_serializer import JsonSerializer
 from src.strategy.infrastructure.persistence.migration_chain import MigrationChain
 from src.strategy.infrastructure.persistence.state_repository import StateRepository
-from src.strategy.infrastructure.persistence.strategy_state_model import (
-    StrategyStateModel,
+from src.strategy.infrastructure.persistence.model.strategy_state_po import (
+    StrategyStatePO as StrategyStateModel,
 )
 
 
