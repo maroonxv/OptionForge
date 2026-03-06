@@ -7,10 +7,10 @@ from peewee import PostgresqlDatabase
 
 from ...domain.aggregate.instrument_manager import InstrumentManager
 from ...domain.aggregate.position_aggregate import PositionAggregate
-from src.strategy.infrastructure.persistence.model.monitor_signal_event_po import (
+from src.strategy.infrastructure.monitoring.model.monitor_signal_event_po import (
     MonitorSignalEventPO,
 )
-from src.strategy.infrastructure.persistence.model.monitor_signal_snapshot_po import (
+from src.strategy.infrastructure.monitoring.model.monitor_signal_snapshot_po import (
     MonitorSignalSnapshotPO,
 )
 
