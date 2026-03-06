@@ -216,7 +216,6 @@ class ConfigLoader:
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
 
-
     @staticmethod
     def load_hedging_config(config: dict) -> dict:
         """
