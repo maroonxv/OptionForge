@@ -196,11 +196,21 @@ def load_option_selector_config(
     _map_field(kwargs, "min_bid_volume", overrides, "min_bid_volume", flt, "min_bid_volume")
     _map_field(kwargs, "min_trading_days", overrides, "min_trading_days", flt, "min_trading_days")
     _map_field(kwargs, "max_trading_days", overrides, "max_trading_days", flt, "max_trading_days")
+    _map_field(kwargs, "filter_min_ask_volume", overrides, "filter_min_ask_volume", flt, "min_ask_volume")
+    _map_field(kwargs, "filter_min_total_volume", overrides, "filter_min_total_volume", flt, "min_total_volume")
+    _map_field(kwargs, "filter_min_open_interest", overrides, "filter_min_open_interest", flt, "min_open_interest")
+    _map_field(kwargs, "filter_max_relative_spread", overrides, "filter_max_relative_spread", flt, "max_relative_spread")
+    _map_field(kwargs, "filter_max_spread_ticks", overrides, "filter_max_spread_ticks", flt, "max_spread_ticks")
+    _map_field(kwargs, "filter_require_valid_quotes", overrides, "filter_require_valid_quotes", flt, "require_valid_quotes")
 
     # liquidity
     _map_field(kwargs, "liquidity_min_volume", overrides, "liquidity_min_volume", liq, "min_volume")
     _map_field(kwargs, "liquidity_min_bid_volume", overrides, "liquidity_min_bid_volume", liq, "min_bid_volume")
     _map_field(kwargs, "liquidity_max_spread_ticks", overrides, "liquidity_max_spread_ticks", liq, "max_spread_ticks")
+    _map_field(kwargs, "liquidity_max_relative_spread", overrides, "liquidity_max_relative_spread", liq, "max_relative_spread")
+    _map_field(kwargs, "liquidity_max_tick_staleness_seconds", overrides, "liquidity_max_tick_staleness_seconds", liq, "max_tick_staleness_seconds")
+    _map_field(kwargs, "liquidity_depth_levels", overrides, "liquidity_depth_levels", liq, "depth_levels")
+    _map_field(kwargs, "liquidity_require_valid_quotes", overrides, "liquidity_require_valid_quotes", liq, "require_valid_quotes")
 
     # score_weight
     _map_field(kwargs, "score_liquidity_weight", overrides, "score_liquidity_weight", sw, "liquidity_weight")

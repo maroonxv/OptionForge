@@ -21,11 +21,21 @@ class OptionSelectorConfig:
     min_bid_volume: int = 10            # 最小买一量
     min_trading_days: int = 1           # 最小剩余交易日
     max_trading_days: int = 50          # 最大剩余交易日
+    filter_min_ask_volume: int = 0      # 最小卖一量(0表示不启用)
+    filter_min_total_volume: int = 0    # 最小当日成交量(0表示不启用)
+    filter_min_open_interest: int = 0   # 最小持仓量(0表示不启用)
+    filter_max_relative_spread: float = 0.0   # 最大相对价差(0表示不启用)
+    filter_max_spread_ticks: int = 0          # 最大价差跳数(需DataFrame提供pricetick列)
+    filter_require_valid_quotes: bool = True  # 过滤无效盘口(买卖价<=0或ask<=bid)
 
     # ── 开仓前流动性检查 (check_liquidity) ──
     liquidity_min_volume: int = 100     # 当日最小成交量
     liquidity_min_bid_volume: int = 1   # 最小买一量
     liquidity_max_spread_ticks: int = 3 # 最大买卖价差跳数
+    liquidity_max_relative_spread: float = 0.0      # 最大相对价差(0表示不启用)
+    liquidity_max_tick_staleness_seconds: float = 0.0  # 行情最大陈旧秒数(0表示不启用)
+    liquidity_depth_levels: int = 1                 # 深度档位(1~5)
+    liquidity_require_valid_quotes: bool = True     # 检查盘口有效性
 
     # ── 评分权重 (score_candidates) ──
     score_liquidity_weight: float = 0.4

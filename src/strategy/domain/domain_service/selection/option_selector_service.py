@@ -3,6 +3,8 @@ OptionSelectorService - 期权选择领域服务
 
 负责从全市场合约中筛选出符合策略要求的虚值期权合约。
 """
+from datetime import datetime
+import math
 from typing import Optional, List, Callable, Any, Dict
 
 import pandas as pd
@@ -41,7 +43,9 @@ class OptionSelectorService:
         min_volume: Optional[int] = None,
         min_bid_volume: Optional[int] = None,
         max_spread_ticks: Optional[int] = None,
-        log_func: Optional[Callable] = None
+        log_func: Optional[Callable] = None,
+        required_volume: Optional[int] = None,
+        side: str = "sell",
     ) -> bool:
         """
         检查开仓前流动性
@@ -53,6 +57,8 @@ class OptionSelectorService:
             min_bid_volume: 最小买一量 (默认使用 config)
             max_spread_ticks: 最大买卖价差 (默认使用 config)
             log_func: 日志记录函数
+            required_volume: 期望成交手数 (默认使用 min_bid_volume)
+            side: 交易方向侧 ("sell" 或 "buy")
             
         返回:
             如果检查通过则返回 True
@@ -63,36 +69,166 @@ class OptionSelectorService:
         min_volume = min_volume if min_volume is not None else self.config.liquidity_min_volume
         min_bid_volume = min_bid_volume if min_bid_volume is not None else self.config.liquidity_min_bid_volume
         max_spread_ticks = max_spread_ticks if max_spread_ticks is not None else self.config.liquidity_max_spread_ticks
+        required_volume = max(int(required_volume if required_volume is not None else min_bid_volume), 1)
+
+        side_norm = self._normalize_side(side)
+        if side_norm is None:
+            if log_func:
+                log_func(f"[流动性] 过滤: 无效方向 side={side}")
+            return False
             
-        vt_symbol = tick.vt_symbol
+        vt_symbol = getattr(tick, "vt_symbol", "")
+        bid_price = float(getattr(tick, "bid_price_1", 0) or 0)
+        ask_price = float(getattr(tick, "ask_price_1", 0) or 0)
         
+        current_volume = float(getattr(tick, "volume", 0) or 0)
+
         # 1. 宏观活跃度：成交量
-        if tick.volume < min_volume:
+        if current_volume < min_volume:
             if log_func:
-                log_func(f"[流动性] 过滤 {vt_symbol}: 活跃度低 (成交量 {tick.volume} < {min_volume})")
+                log_func(f"[流动性] 过滤 {vt_symbol}: 活跃度低 (成交量 {current_volume} < {min_volume})")
             return False
-            
-        # 2. 微观流动性：买一量
-        if tick.bid_volume_1 < min_bid_volume:
-            if log_func:
-                log_func(f"[流动性] 过滤 {vt_symbol}: 深度不足 (买一量 {tick.bid_volume_1} < {min_bid_volume})")
-            return False
-            
+
+        # 2. 盘口有效性
+        if self.config.liquidity_require_valid_quotes:
+            if (
+                not self._is_finite_positive(bid_price)
+                or not self._is_finite_positive(ask_price)
+                or ask_price <= bid_price
+            ):
+                if log_func:
+                    log_func(
+                        f"[流动性] 过滤 {vt_symbol}: 无效盘口 "
+                        f"(bid={bid_price}, ask={ask_price})"
+                    )
+                return False
+        else:
+            if not math.isfinite(bid_price) or not math.isfinite(ask_price) or ask_price < bid_price:
+                if log_func:
+                    log_func(
+                        f"[流动性] 过滤 {vt_symbol}: 盘口异常 "
+                        f"(bid={bid_price}, ask={ask_price})"
+                    )
+                return False
+
         # 3. 买卖价差过滤
         pricetick = getattr(contract, "pricetick", 0)
         if pricetick <= 0:
             if log_func: log_func(f"[流动性] 过滤 {vt_symbol}: 无效的最小变动价位 {pricetick}")
             return False
             
-        spread = tick.ask_price_1 - tick.bid_price_1
+        spread = ask_price - bid_price
+        if spread < 0:
+            if log_func:
+                log_func(
+                    f"[流动性] 过滤 {vt_symbol}: 价差异常 "
+                    f"(bid={bid_price}, ask={ask_price})"
+                )
+            return False
         spread_ticks = spread / pricetick
         
-        if spread_ticks >= max_spread_ticks:
+        if max_spread_ticks > 0 and spread_ticks >= max_spread_ticks:
             if log_func:
-                log_func(f"[流动性] 过滤 {vt_symbol}: 价差过大 买一 {tick.bid_price_1} 卖一 {tick.ask_price_1} ({spread_ticks:.1f} 跳 >= {max_spread_ticks})")
+                log_func(
+                    f"[流动性] 过滤 {vt_symbol}: 价差过大 "
+                    f"买一 {bid_price} 卖一 {ask_price} "
+                    f"({spread_ticks:.1f} 跳 >= {max_spread_ticks})"
+                )
             return False
-            
+
+        max_relative_spread = self.config.liquidity_max_relative_spread
+        if max_relative_spread > 0:
+            mid_price = (bid_price + ask_price) / 2.0
+            relative_spread = spread / mid_price if mid_price > 0 else float("inf")
+            if relative_spread > max_relative_spread:
+                if log_func:
+                    log_func(
+                        f"[流动性] 过滤 {vt_symbol}: 相对价差过大 "
+                        f"({relative_spread:.4f} > {max_relative_spread:.4f})"
+                    )
+                return False
+
+        max_staleness = self.config.liquidity_max_tick_staleness_seconds
+        if max_staleness > 0:
+            tick_dt = getattr(tick, "datetime", None)
+            if not isinstance(tick_dt, datetime):
+                if log_func:
+                    log_func(f"[流动性] 过滤 {vt_symbol}: Tick 时间戳缺失或无效")
+                return False
+            now = datetime.now(tick_dt.tzinfo) if tick_dt.tzinfo else datetime.now()
+            age_seconds = max(0.0, (now - tick_dt).total_seconds())
+            if age_seconds > max_staleness:
+                if log_func:
+                    log_func(
+                        f"[流动性] 过滤 {vt_symbol}: Tick 过期 "
+                        f"({age_seconds:.1f}s > {max_staleness:.1f}s)"
+                    )
+                return False
+
+        depth_levels = max(1, min(5, int(self.config.liquidity_depth_levels)))
+        if side_norm == "sell":
+            top_volume = float(getattr(tick, "bid_volume_1", 0) or 0)
+            total_depth_volume = self._sum_depth_volume(tick, "bid", depth_levels)
+            depth_desc = "买盘深度"
+        else:
+            top_volume = float(getattr(tick, "ask_volume_1", 0) or 0)
+            total_depth_volume = self._sum_depth_volume(tick, "ask", depth_levels)
+            depth_desc = "卖盘深度"
+
+        # 保留向后兼容: 顶层盘口量也要满足最小阈值
+        if top_volume < min_bid_volume:
+            if log_func:
+                log_func(
+                    f"[流动性] 过滤 {vt_symbol}: 顶档深度不足 "
+                    f"({top_volume} < {min_bid_volume})"
+                )
+            return False
+
+        if total_depth_volume < required_volume:
+            if log_func:
+                log_func(
+                    f"[流动性] 过滤 {vt_symbol}: {depth_desc}不足 "
+                    f"({total_depth_volume:.1f} < {required_volume}, depth_levels={depth_levels})"
+                )
+            return False
+
         return True
+
+    @staticmethod
+    def _normalize_side(side: Optional[str]) -> Optional[str]:
+        if side is None:
+            return "sell"
+
+        text = str(side).strip().lower()
+        mapping = {
+            "sell": "sell",
+            "short": "sell",
+            "bid": "sell",
+            "buy": "buy",
+            "long": "buy",
+            "ask": "buy",
+        }
+        return mapping.get(text)
+
+    @staticmethod
+    def _sum_depth_volume(tick: Any, side_prefix: str, depth_levels: int) -> float:
+        total = 0.0
+        for level in range(1, depth_levels + 1):
+            raw = getattr(tick, f"{side_prefix}_volume_{level}", 0)
+            try:
+                value = float(raw)
+            except (TypeError, ValueError):
+                value = 0.0
+
+            if not math.isfinite(value) or value < 0:
+                value = 0.0
+
+            total += value
+        return total
+
+    @staticmethod
+    def _is_finite_positive(value: float) -> bool:
+        return math.isfinite(value) and value > 0
 
     def select_option(
         self,
@@ -201,19 +337,95 @@ class OptionSelectorService:
     def _filter_liquidity(self, df: pd.DataFrame, log_func: Optional[Callable] = None) -> pd.DataFrame:
         """过滤流动性不足的合约"""
         result = df.copy()
-        start_len = len(result)
-        
-        if "bid_price" in result.columns:
-            result = result[result["bid_price"] >= self.config.min_bid_price]
+        if result.empty:
+            return result
+
+        def _apply_filter(mask: pd.Series, message: str) -> None:
+            nonlocal result
+            start_len = len(result)
+            result = result[mask]
             if log_func and len(result) < start_len:
-                log_func(f"[DEBUG-OPT] 价格过滤: {start_len} -> {len(result)} (min_bid_price={self.config.min_bid_price})")
-        
-        mid_len = len(result)
+                log_func(f"[DEBUG-OPT] {message}: {start_len} -> {len(result)}")
+
+        if self.config.filter_require_valid_quotes and "bid_price" in result.columns:
+            bid = pd.to_numeric(result["bid_price"], errors="coerce")
+            valid_mask = bid > 0
+            if "ask_price" in result.columns:
+                ask = pd.to_numeric(result["ask_price"], errors="coerce")
+                valid_mask = valid_mask & (ask > 0) & (ask > bid)
+            _apply_filter(valid_mask, "盘口有效性过滤")
+
+        if "bid_price" in result.columns:
+            bid = pd.to_numeric(result["bid_price"], errors="coerce")
+            _apply_filter(
+                bid >= self.config.min_bid_price,
+                f"买价过滤(min_bid_price={self.config.min_bid_price})"
+            )
+
         if "bid_volume" in result.columns:
-            result = result[result["bid_volume"] >= self.config.min_bid_volume]
-            if log_func and len(result) < mid_len:
-                log_func(f"[DEBUG-OPT] 销量过滤: {mid_len} -> {len(result)} (min_bid_volume={self.config.min_bid_volume})")
-        
+            bid_volume = pd.to_numeric(result["bid_volume"], errors="coerce")
+            _apply_filter(
+                bid_volume >= self.config.min_bid_volume,
+                f"买量过滤(min_bid_volume={self.config.min_bid_volume})"
+            )
+
+        if self.config.filter_min_ask_volume > 0 and "ask_volume" in result.columns:
+            ask_volume = pd.to_numeric(result["ask_volume"], errors="coerce")
+            _apply_filter(
+                ask_volume >= self.config.filter_min_ask_volume,
+                f"卖量过滤(min_ask_volume={self.config.filter_min_ask_volume})"
+            )
+
+        if self.config.filter_min_total_volume > 0 and "volume" in result.columns:
+            volume = pd.to_numeric(result["volume"], errors="coerce")
+            _apply_filter(
+                volume >= self.config.filter_min_total_volume,
+                f"成交量过滤(min_total_volume={self.config.filter_min_total_volume})"
+            )
+
+        if self.config.filter_min_open_interest > 0 and "open_interest" in result.columns:
+            open_interest = pd.to_numeric(result["open_interest"], errors="coerce")
+            _apply_filter(
+                open_interest >= self.config.filter_min_open_interest,
+                f"持仓量过滤(min_open_interest={self.config.filter_min_open_interest})"
+            )
+
+        if (
+            self.config.filter_max_relative_spread > 0
+            and "bid_price" in result.columns
+            and "ask_price" in result.columns
+        ):
+            bid = pd.to_numeric(result["bid_price"], errors="coerce")
+            ask = pd.to_numeric(result["ask_price"], errors="coerce")
+            spread = ask - bid
+            mid = (ask + bid) / 2.0
+            rel_spread = spread / mid
+            _apply_filter(
+                (mid > 0)
+                & (spread >= 0)
+                & rel_spread.notna()
+                & (rel_spread <= self.config.filter_max_relative_spread),
+                f"相对价差过滤(max_relative_spread={self.config.filter_max_relative_spread})"
+            )
+
+        if (
+            self.config.filter_max_spread_ticks > 0
+            and "bid_price" in result.columns
+            and "ask_price" in result.columns
+            and "pricetick" in result.columns
+        ):
+            bid = pd.to_numeric(result["bid_price"], errors="coerce")
+            ask = pd.to_numeric(result["ask_price"], errors="coerce")
+            pricetick = pd.to_numeric(result["pricetick"], errors="coerce")
+            spread_ticks = (ask - bid) / pricetick
+            _apply_filter(
+                (pricetick > 0)
+                & spread_ticks.notna()
+                & (spread_ticks >= 0)
+                & (spread_ticks <= self.config.filter_max_spread_ticks),
+                f"价差跳数过滤(max_spread_ticks={self.config.filter_max_spread_ticks})"
+            )
+
         return result
     
     def _filter_trading_days(self, df: pd.DataFrame, log_func: Optional[Callable] = None) -> pd.DataFrame:
@@ -581,44 +793,53 @@ class OptionSelectorService:
                 failure_reason="流动性或到期日过滤后无可用合约"
             )
 
-        # 分离 Call 和 Put
-        calls = df[df["option_type"] == "call"] if "option_type" in df.columns else pd.DataFrame()
-        puts = df[df["option_type"] == "put"] if "option_type" in df.columns else pd.DataFrame()
+        for expiry_group in self._sorted_expiry_groups(df):
+            # 分离 Call 和 Put
+            calls = expiry_group[expiry_group["option_type"] == "call"] if "option_type" in expiry_group.columns else pd.DataFrame()
+            puts = expiry_group[expiry_group["option_type"] == "put"] if "option_type" in expiry_group.columns else pd.DataFrame()
 
-        if calls.empty or puts.empty:
-            missing = "Call" if calls.empty else "Put"
+            if calls.empty or puts.empty:
+                continue
+
+            call_strikes = set(calls["strike_price"].unique())
+            put_strikes = set(puts["strike_price"].unique())
+            common_strikes = call_strikes & put_strikes
+            if not common_strikes:
+                continue
+
+            # 选择最接近标的价格的行权价
+            atm_strike = min(common_strikes, key=lambda s: abs(s - underlying_price))
+            call_rows = calls[calls["strike_price"] == atm_strike]
+            put_rows = puts[puts["strike_price"] == atm_strike]
+            if call_rows.empty or put_rows.empty:
+                continue
+
+            if "bid_volume" in call_rows.columns:
+                call_rows = call_rows.sort_values("bid_volume", ascending=False)
+            if "bid_volume" in put_rows.columns:
+                put_rows = put_rows.sort_values("bid_volume", ascending=False)
+
+            call_row = call_rows.iloc[0]
+            put_row = put_rows.iloc[0]
+
+            call_leg = self._to_option_contract(call_row, "call")
+            put_leg = self._to_option_contract(put_row, "put")
+
+            if log_func:
+                log_func(
+                    f"[COMBO] STRADDLE 选中: expiry={call_leg.expiry_date}, "
+                    f"行权价={atm_strike}, Call={call_leg.vt_symbol}, Put={put_leg.vt_symbol}"
+                )
+
             return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason=f"流动性不足: 无满足条件的 {missing} 合约"
+                combination_type=combo_type,
+                legs=[call_leg, put_leg],
+                success=True,
             )
-
-        # 找到 Call 和 Put 共有的行权价
-        call_strikes = set(calls["strike_price"].unique())
-        put_strikes = set(puts["strike_price"].unique())
-        common_strikes = call_strikes & put_strikes
-
-        if not common_strikes:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无 Call/Put 共有的行权价"
-            )
-
-        # 选择最接近标的价格的行权价
-        atm_strike = min(common_strikes, key=lambda s: abs(s - underlying_price))
-
-        call_row = calls[calls["strike_price"] == atm_strike].iloc[0]
-        put_row = puts[puts["strike_price"] == atm_strike].iloc[0]
-
-        call_leg = self._to_option_contract(call_row, "call")
-        put_leg = self._to_option_contract(put_row, "put")
-
-        if log_func:
-            log_func(f"[COMBO] STRADDLE 选中: 行权价={atm_strike}, Call={call_leg.vt_symbol}, Put={put_leg.vt_symbol}")
 
         return CombinationSelectionResult(
-            combination_type=combo_type,
-            legs=[call_leg, put_leg],
-            success=True,
+            combination_type=combo_type, legs=[], success=False,
+            failure_reason="流动性不足: 无同到期日的可用 Call/Put 组合"
         )
 
     def _select_strangle(
@@ -647,63 +868,43 @@ class OptionSelectorService:
                 failure_reason="流动性或到期日过滤后无可用合约"
             )
 
-        # 分别计算 Call 和 Put 的虚值排名
-        calls = df[df["option_type"] == "call"].copy() if "option_type" in df.columns else pd.DataFrame()
-        puts = df[df["option_type"] == "put"].copy() if "option_type" in df.columns else pd.DataFrame()
+        for expiry_group in self._sorted_expiry_groups(df):
+            # 分别计算 Call 和 Put 的虚值排名
+            calls = expiry_group[expiry_group["option_type"] == "call"].copy() if "option_type" in expiry_group.columns else pd.DataFrame()
+            puts = expiry_group[expiry_group["option_type"] == "put"].copy() if "option_type" in expiry_group.columns else pd.DataFrame()
 
-        if calls.empty:
+            if calls.empty or puts.empty:
+                continue
+
+            calls_ranked = self._calculate_otm_ranking(calls, "call", underlying_price)
+            puts_ranked = self._calculate_otm_ranking(puts, "put", underlying_price)
+            if calls_ranked.empty or puts_ranked.empty:
+                continue
+
+            call_target = self._select_by_level(calls_ranked, "call", level)
+            put_target = self._select_by_level(puts_ranked, "put", level)
+            if call_target is None or put_target is None:
+                continue
+
+            call_leg = self._to_option_contract(call_target, "call")
+            put_leg = self._to_option_contract(put_target, "put")
+
+            if log_func:
+                log_func(
+                    f"[COMBO] STRANGLE 选中: expiry={call_leg.expiry_date}, 档位={level}, "
+                    f"Call={call_leg.vt_symbol}(K={call_leg.strike_price}), "
+                    f"Put={put_leg.vt_symbol}(K={put_leg.strike_price})"
+                )
+
             return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无满足条件的 Call 合约"
-            )
-        if puts.empty:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无满足条件的 Put 合约"
-            )
-
-        calls_ranked = self._calculate_otm_ranking(calls, "call", underlying_price)
-        puts_ranked = self._calculate_otm_ranking(puts, "put", underlying_price)
-
-        if calls_ranked.empty:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无虚值 Call 合约"
-            )
-        if puts_ranked.empty:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无虚值 Put 合约"
-            )
-
-        call_target = self._select_by_level(calls_ranked, "call", level)
-        put_target = self._select_by_level(puts_ranked, "put", level)
-
-        if call_target is None:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无法选择目标档位的 Call"
-            )
-        if put_target is None:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无法选择目标档位的 Put"
-            )
-
-        call_leg = self._to_option_contract(call_target, "call")
-        put_leg = self._to_option_contract(put_target, "put")
-
-        if log_func:
-            log_func(
-                f"[COMBO] STRANGLE 选中: 档位={level}, "
-                f"Call={call_leg.vt_symbol}(K={call_leg.strike_price}), "
-                f"Put={put_leg.vt_symbol}(K={put_leg.strike_price})"
+                combination_type=combo_type,
+                legs=[call_leg, put_leg],
+                success=True,
             )
 
         return CombinationSelectionResult(
-            combination_type=combo_type,
-            legs=[call_leg, put_leg],
-            success=True,
+            combination_type=combo_type, legs=[], success=False,
+            failure_reason="流动性不足: 无同到期日的可用虚值 Call/Put 组合"
         )
 
     def _select_vertical_spread(
@@ -741,64 +942,75 @@ class OptionSelectorService:
                 failure_reason="流动性或到期日过滤后无可用合约"
             )
 
-        # 按期权类型筛选
-        if "option_type" in df.columns:
-            df = df[df["option_type"] == opt_type]
+        for expiry_group in self._sorted_expiry_groups(df):
+            local_df = expiry_group
 
-        if df.empty:
+            # 按期权类型筛选
+            if "option_type" in local_df.columns:
+                local_df = local_df[local_df["option_type"] == opt_type]
+
+            if local_df.empty:
+                continue
+
+            # 计算虚值排名
+            ranked = self._calculate_otm_ranking(local_df, opt_type, underlying_price)
+            if ranked.empty:
+                continue
+
+            # 选择近腿 (第1档虚值) 和远腿 (第1+width档虚值)
+            near_target = self._select_by_level(ranked, opt_type, 1)
+            far_target = self._select_by_level(ranked, opt_type, 1 + width)
+            if near_target is None or far_target is None:
+                continue
+
+            near_strike = float(near_target.get("strike_price", 0))
+            far_strike = float(far_target.get("strike_price", 0))
+            if near_strike == far_strike:
+                continue
+
+            near_leg = self._to_option_contract(near_target, opt_type)
+            far_leg = self._to_option_contract(far_target, opt_type)
+
+            if log_func:
+                log_func(
+                    f"[COMBO] VERTICAL_SPREAD 选中: expiry={near_leg.expiry_date}, 类型={opt_type}, "
+                    f"近腿={near_leg.vt_symbol}(K={near_leg.strike_price}), "
+                    f"远腿={far_leg.vt_symbol}(K={far_leg.strike_price})"
+                )
+
             return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason=f"流动性不足: 无满足条件的 {opt_type} 合约"
-            )
-
-        # 计算虚值排名
-        ranked = self._calculate_otm_ranking(df, opt_type, underlying_price)
-
-        if ranked.empty:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason=f"无虚值 {opt_type} 合约"
-            )
-
-        # 选择近腿 (第1档虚值) 和远腿 (第1+width档虚值)
-        near_target = self._select_by_level(ranked, opt_type, 1)
-        far_target = self._select_by_level(ranked, opt_type, 1 + width)
-
-        if near_target is None:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无法选择近腿"
-            )
-        if far_target is None:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="流动性不足: 无法选择远腿 (行权价间距不足)"
-            )
-
-        # 确保两腿行权价不同
-        near_strike = float(near_target.get("strike_price", 0))
-        far_strike = float(far_target.get("strike_price", 0))
-        if near_strike == far_strike:
-            return CombinationSelectionResult(
-                combination_type=combo_type, legs=[], success=False,
-                failure_reason="两腿行权价相同，无法构成垂直价差"
-            )
-
-        near_leg = self._to_option_contract(near_target, opt_type)
-        far_leg = self._to_option_contract(far_target, opt_type)
-
-        if log_func:
-            log_func(
-                f"[COMBO] VERTICAL_SPREAD 选中: 类型={opt_type}, "
-                f"近腿={near_leg.vt_symbol}(K={near_leg.strike_price}), "
-                f"远腿={far_leg.vt_symbol}(K={far_leg.strike_price})"
+                combination_type=combo_type,
+                legs=[near_leg, far_leg],
+                success=True,
             )
 
         return CombinationSelectionResult(
-            combination_type=combo_type,
-            legs=[near_leg, far_leg],
-            success=True,
+            combination_type=combo_type, legs=[], success=False,
+            failure_reason=f"流动性不足: 无同到期日且可构造的 {opt_type} 垂直价差"
         )
+
+    def _sorted_expiry_groups(self, df: pd.DataFrame) -> List[pd.DataFrame]:
+        """
+        按到期日分组并排序：
+        - 优先选择 days_to_expiry 更接近配置区间中点的组
+        - 再按 expiry_date 字符串排序，确保结果稳定
+        """
+        if "expiry_date" not in df.columns:
+            return [df]
+
+        midpoint = (self.config.min_trading_days + self.config.max_trading_days) / 2.0
+        grouped: List[tuple[float, str, pd.DataFrame]] = []
+
+        for expiry, group in df.groupby("expiry_date"):
+            score = float("inf")
+            if "days_to_expiry" in group.columns:
+                days = pd.to_numeric(group["days_to_expiry"], errors="coerce").dropna()
+                if not days.empty:
+                    score = abs(float(days.median()) - midpoint)
+            grouped.append((score, str(expiry), group.copy()))
+
+        grouped.sort(key=lambda x: (x[0], x[1]))
+        return [group for _, _, group in grouped]
 
     # ------------------------------------------------------------------
     # 评分排名
@@ -877,6 +1089,19 @@ class OptionSelectorService:
         if df.empty:
             if log_func:
                 log_func("[SCORE] 筛选后无该类型期权")
+            return []
+
+        # 先应用基础流动性和到期日过滤，再进行评分
+        df = self._filter_liquidity(df, log_func)
+        if df.empty:
+            if log_func:
+                log_func("[SCORE] 流动性过滤后无候选")
+            return []
+
+        df = self._filter_trading_days(df, log_func)
+        if df.empty:
+            if log_func:
+                log_func("[SCORE] 到期日过滤后无候选")
             return []
 
         # 计算虚值排名 (需要 diff1 列)
