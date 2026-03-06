@@ -1,71 +1,84 @@
-## 1. 项目目录
+# option-trading-infra
 
-```mermaid
-flowchart TD
-    ROOT[option-strategy-scaffold]
-    ROOT --> CFG[config/]
-    ROOT --> SRC[src/]
-    ROOT --> TESTS[tests/]
-    ROOT --> SCRIPTS[scripts/]
-    ROOT --> DEPLOY[deploy/]
-    ROOT --> DOC[doc/]
+基于 **vn.py** 的期权交易策略基础设施，定位为可直接二开的模板仓库。  
+仓库内已包含策略运行主干、领域分层、配置体系、回测与测试骨架，适合作为你的期权策略项目起点。
 
-    CFG --> CFG_CORE[strategy_config.toml]
-    CFG --> CFG_GENERAL[general/]
-    CFG --> CFG_SUB[subscription/]
-    CFG --> CFG_DOMAIN[domain_service/]
-    CFG --> CFG_TIMEFRAME[timeframe/]
+## 项目定位
 
-    SRC --> SRC_MAIN[src/main/]
-    SRC --> SRC_STRATEGY[src/strategy/]
-    SRC --> SRC_BACKTEST[src/backtesting/]
-    SRC --> SRC_WEB[src/web/]
-```
+- 目标: 提供一套可运行、可测试、可扩展的期权策略工程骨架，而不是单一策略脚本
+- 场景: 商品/指数期权策略开发、参数迭代、风控落地、实盘/模拟联调
+- 模式: `standalone`（开发调试）与 `daemon`（守护运行）
 
-## 2. 在 config 目录下配置策略的方法
+## 核心能力
+
+- 基于 DDD 的策略分层: `application / domain / infrastructure`
+- 内置领域服务簇: `selection / risk / execution / pricing / signal / hedging / combination`
+- 配置解耦: 通过 `config/*.toml` 组合策略参数与领域服务参数
+- 回测入口与运行入口分离，便于研发与生产切换
+- 测试覆盖面完整，包含 domain、main、web、backtesting 等模块
+
+## 架构概览
 
 ```mermaid
 flowchart LR
-    A[config/general/trading_target.toml<br/>配置交易品种 targets] --> B[config/strategy_config.toml<br/>配置 strategies.setting / runtime / risk]
-    B --> C[config/domain_service/**/*.toml<br/>配置选券/风控/执行/定价细节]
-    C --> D[config/subscription/subscription.toml<br/>配置订阅模式与收敛规则]
-    D --> E[可选: config/timeframe/*.toml<br/>覆盖 bar_window / strategy_name]
-    E --> F[运行: python -m src.main.main --mode standalone --config config/strategy_config.toml --override-config config/timeframe/15m.toml]
+    A[vn.py 回调] --> B[StrategyEntry]
+    B --> C[Application Workflows]
+    C --> D[Domain Services]
+    D --> E[Infrastructure Gateway / Persistence / Monitoring]
+    E --> F[交易执行与状态存储]
 ```
 
-配置顺序建议：
-1. 先改 `config/general/trading_target.toml` 的 `targets`，确定要交易的品种。
-2. 再改 `config/strategy_config.toml` 的 `[[strategies]]` 与 `[strategies.setting]`（如 `max_positions`、`position_ratio`、`strike_level`、`bar_window`）。
-3. 按需改 `config/domain_service/` 下各模块 TOML（`selection`、`risk`、`execution`、`pricing`）。
-4. 需要自动订阅收敛时，改 `config/subscription/subscription.toml` 的 `enabled`、`enabled_modes` 等参数。
-5. 需要多周期策略时，在 `config/timeframe/` 新建覆盖文件并通过 `--override-config` 传入。
+## 目录结构
 
-## 3. 以本策略作为模板仓库搭建自己的期权交易策略的指南
-
-```mermaid
-flowchart TD
-    T1[1. 基于模板创建新仓库] --> T2[2. 替换策略实现]
-    T2 --> T3[3. 调整配置]
-    T3 --> T4[4. 补充测试]
-    T4 --> T5[5. 本地联调并运行]
-    T5 --> T6[6. 迭代策略参数与风控阈值]
+```text
+config/                      配置文件（策略、领域服务、订阅、周期覆盖）
+deploy/                      Docker 与部署文件
+src/main/                    程序主入口与进程管理
+src/strategy/application/    应用层编排
+src/strategy/domain/         领域模型与领域服务
+src/strategy/infrastructure/ 网关、持久化、监控等实现
+src/backtesting/             回测模块
+tests/                       自动化测试
+doc/                         设计与操作文档
 ```
 
-落地步骤：
-1. 用该仓库创建新仓库（GitHub `Use this template` 或本地 `git clone` 后改远端）。
-2. 在 `src/strategy/domain/domain_service/signal/` 实现你的信号逻辑（`IndicatorService`、`SignalService`）。
-3. 在 `src/strategy/strategy_entry.py` 保持入口类可用，并确保 `config/strategy_config.toml` 的 `class_name` 与策略参数匹配。
-4. 按你的交易标的与风控需求，完整调整 `config/` 下文件（至少 `strategy_config.toml`、`trading_target.toml`、`domain_service/*.toml`）。
-5. 在 `tests/strategy/` 与 `tests/main/` 增加或修改对应测试，覆盖开平仓、风控和配置加载。
-6. 使用以下命令启动验证：
+## 快速启动
+
+1. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+2. 启动策略（单进程）
 
 ```bash
 python -m src.main.main --mode standalone --config config/strategy_config.toml
 ```
 
-## 4. 运行测试
+3. 可选：覆盖周期配置（如 15m）
 
-`pytest` 配置已放到 `config/pytest.ini`，运行测试请显式指定配置文件：
+```bash
+python -m src.main.main --mode standalone --config config/strategy_config.toml --override-config config/timeframe/15m.toml
+```
+
+## 在 `config` 目录下配置策略（简短指引）
+
+先在 `config/general/trading_target.toml` 定义交易标的，再在 `config/strategy_config.toml` 填写策略类和核心参数（仓位、档位、K 线窗口）。  
+然后按需调整 `config/domain_service/` 下的 `selection/risk/execution/pricing` 配置；如果启用动态订阅，再配置 `config/subscription/subscription.toml`。  
+需要多周期时，在 `config/timeframe/` 新增覆盖文件并通过 `--override-config` 传入。
+
+## 以本仓库作为模板搭建自己的期权策略（聚焦领域服务）
+
+1. 复制模板后，先明确你要改的领域模块（通常从 `src/strategy/domain/domain_service/signal` 或 `risk` 开始）。
+2. 在对应 `domain_service` 子目录实现你的业务规则，保持“纯领域逻辑”，不要把 vn.py API 或 IO 细节写进服务。
+3. 在 `src/strategy/strategy_entry.py` 中接入新服务（初始化与调用链），确保与现有 workflow 对齐。
+4. 给新服务补一份对应的 `config/domain_service/**/*.toml`，让参数可配置。
+5. 在 `tests/strategy/domain/domain_service/` 增加用例，至少覆盖正常路径、边界条件和关键风控分支。
+
+## 运行测试
+
+`pytest` 配置位于 `config/pytest.ini`：
 
 ```bash
 pytest -c config/pytest.ini
