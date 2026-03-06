@@ -2,11 +2,12 @@
 recorder_patch.py - 数据录制路径补丁
 
 职责:
-将 VnPy 的 data_recorder_setting.json 路径重定向到项目 config/general/ 目录。
+将 VnPy 的 data_recorder_setting.json 路径重定向到运行时目录，避免污染配置目录。
 合并自 child_process.py._patch_data_recorder_setting_path() 和
 run_recorder.py._patch_data_recorder_setting_path() 的公共逻辑。
 """
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -16,8 +17,12 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 def patch_data_recorder_setting_path() -> None:
     """
-    将 VnPy 的 data_recorder_setting.json 路径重定向到项目 config/general/ 目录。
+    将 VnPy 的 data_recorder_setting.json 路径重定向到运行时目录。
     支持从 TOML 格式转换为 JSON 格式供 VnPy 使用。
+
+    环境变量:
+        DATA_RECORDER_SETTING_TOML: TOML 配置源路径
+        DATA_RECORDER_SETTING_JSON: 运行时 JSON 输出路径
     """
     import sys
     import json
@@ -30,8 +35,18 @@ def patch_data_recorder_setting_path() -> None:
         import tomli as tomllib
 
     original_get_file_path = vnpy_utility.get_file_path
-    toml_path = PROJECT_ROOT / "config" / "general" / "data_recorder_setting.toml"
-    json_path = PROJECT_ROOT / "config" / "general" / "data_recorder_setting.json"
+    toml_path = Path(
+        os.getenv(
+            "DATA_RECORDER_SETTING_TOML",
+            str(PROJECT_ROOT / "config" / "general" / "data_recorder_setting.toml"),
+        )
+    )
+    json_path = Path(
+        os.getenv(
+            "DATA_RECORDER_SETTING_JSON",
+            str(PROJECT_ROOT / "data" / "runtime" / "data_recorder_setting.json"),
+        )
+    )
     json_path.parent.mkdir(parents=True, exist_ok=True)
 
     # 如果 TOML 文件存在，从 TOML 转换为 JSON

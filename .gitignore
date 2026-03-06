@@ -11,4 +11,6 @@ TODO
 
 temp/
 
-deploy/init_data/init.sql
+deploy/initdb/*.sql
+deploy/initdb/*.sql.gz
+deploy/initdb/*.sh
