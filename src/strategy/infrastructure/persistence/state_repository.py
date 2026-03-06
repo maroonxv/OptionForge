@@ -138,8 +138,9 @@ class StateRepository:
             return False
 
         try:
-            parsed = json.loads(record.snapshot_json)
-        except (json.JSONDecodeError, TypeError):
+            json_str = self._maybe_decompress(record.snapshot_json)
+            parsed = json.loads(json_str)
+        except Exception:
             return False
 
         return "schema_version" in parsed

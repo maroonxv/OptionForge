@@ -541,3 +541,14 @@ class TestStateRepositoryUnit:
 
         assert repo.verify_integrity("bad_json") is False
         db.close()
+
+    def test_verify_integrity_compressed_record(self):
+        """verify_integrity should return True for compressed valid records."""
+        db = _setup_test_db()
+        repo = _make_repo(db)
+
+        # 足够大的可压缩内容，触发 _maybe_compress
+        repo.save("compressed_strat", {"payload": "x" * 50000})
+
+        assert repo.verify_integrity("compressed_strat") is True
+        db.close()
