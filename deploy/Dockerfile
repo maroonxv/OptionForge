@@ -5,12 +5,12 @@ ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 2. 安装系统依赖
-# libmysqlclient-dev: mysql驱动需要
+# libpq-dev: postgres 驱动需要
 # locales: 中文支持
-# pkg-config: 编译 mysqlclient 可能需要
+# pkg-config: 编译数据库驱动时可能需要
 RUN apt-get update && apt-get install -y \
     build-essential \
-    default-libmysqlclient-dev \
+    libpq-dev \
     locales \
     tzdata \
     pkg-config \

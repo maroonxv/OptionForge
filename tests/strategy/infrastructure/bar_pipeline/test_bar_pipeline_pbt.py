@@ -14,7 +14,7 @@ _vnpy_mods = [
     "vnpy", "vnpy.event", "vnpy.event.engine",
     "vnpy.trader", "vnpy.trader.setting", "vnpy.trader.engine",
     "vnpy.trader.constant", "vnpy.trader.object", "vnpy.trader.database",
-    "vnpy_mysql",
+    "vnpy_postgresql",
     "vnpy_portfoliostrategy", "vnpy_portfoliostrategy.utility",
     "vnpy_portfoliostrategy.template",
 ]

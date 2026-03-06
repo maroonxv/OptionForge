@@ -29,7 +29,7 @@ for _name in [
     "vnpy.trader.database",
     "vnpy.trader.constant",
     "vnpy.trader.object",
-    "vnpy_mysql",
+    "vnpy_postgresql",
 ]:
     if _name not in sys.modules:
         sys.modules[_name] = MagicMock()

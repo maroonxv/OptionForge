@@ -25,7 +25,7 @@ _vnpy_mock = MagicMock()
 _vnpy_mocks = {}
 for _mod_name in [
     "vnpy", "vnpy.event", "vnpy.trader", "vnpy.trader.setting",
-    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_mysql",
+    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_postgresql",
 ]:
     if _mod_name not in sys.modules:
         _vnpy_mocks[_mod_name] = MagicMock()
@@ -60,7 +60,7 @@ def reset_factory():
 
 
 FULL_ENV = {
-    "VNPY_DATABASE_DRIVER": "mysql",
+    "VNPY_DATABASE_DRIVER": "postgresql",
     "VNPY_DATABASE_HOST": "localhost",
     "VNPY_DATABASE_DATABASE": "vnpy_test",
     "VNPY_DATABASE_USER": "root",
@@ -231,7 +231,7 @@ class TestDatabaseFactoryUnit:
             assert factory._peewee_db is None
 
     def test_no_sqlite_fallback_on_connection_failure(self, monkeypatch):
-        """When MySQL connection fails, should raise DatabaseConnectionError, NOT fall back to SQLite.
+        """When Postgres connection fails, should raise DatabaseConnectionError, NOT fall back to SQLite.
 
         Validates: Requirements 3.4
         """

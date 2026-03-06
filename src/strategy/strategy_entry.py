@@ -387,7 +387,7 @@ class StrategyEntry(StrategyTemplate):
                 setattr(self, "trading", original_trading)
                 self.warming_up = False
         else:
-            # 实盘 warmup: load_state + universe_validation + MySQL replay
+            # 实盘 warmup: load_state + universe_validation + Postgres replay
             try:
                 result = self.state_repository.load(self.strategy_name)
                 if isinstance(result, ArchiveNotFound):
@@ -435,7 +435,7 @@ class StrategyEntry(StrategyTemplate):
                     on_bars_callback=self.on_bars,  # on_bars 内部根据 bar_pipeline 分支
                 )
                 if not ok:
-                    self.logger.error("实盘 warmup 失败: MySQL 中未能回放到有效 K 线")
+                    self.logger.error("实盘 warmup 失败: Postgres 中未能回放到有效 K 线")
                     raise RuntimeError("live warmup failed")
             except Exception:
                 self.logger.error("实盘 warmup 执行失败（可能是 BarPipeline 处理异常）", exc_info=True)

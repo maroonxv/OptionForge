@@ -21,7 +21,7 @@ for _mod_name in [
     "vnpy.trader.constant",
     "vnpy.trader.object",
     "vnpy.trader.database",
-    "vnpy_mysql",
+    "vnpy_postgresql",
     "vnpy_portfoliostrategy",
     "vnpy_portfoliostrategy.utility",
 ]:

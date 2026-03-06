@@ -4,21 +4,22 @@ name: macd-td-index-strategy
 
 services:
   # --- 数据库服务 ---
-  mysql-db:
-    image: mysql:8.0
-    container_name: vnpy_mysql
+  postgres-db:
+    image: postgres:16
+    container_name: vnpy_postgres
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-vnpy}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-vnpy}
     volumes:
       # 挂载数据卷，保证数据持久化
-      - mysql_data:/var/lib/mysql
+      - postgres_data:/var/lib/postgresql/data
       # 挂载初始化脚本（方案 B）
       - ./init_data:/docker-entrypoint-initdb.d
     ports:
-      - "3307:3306"  # 开发期暴露：宿主机3307 -> 容器3306
+      - "5433:5432"  # 开发期暴露：宿主机5433 -> 容器5432
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-vnpy}"]
       timeout: 20s
       retries: 10
 
@@ -32,15 +33,16 @@ services:
     ports:
       - "5007:5007"
     environment:
-      - VNPY_DATABASE_DRIVER=mysql
-      - VNPY_DATABASE_HOST=mysql-db
-      - VNPY_DATABASE_USER=root
-      - VNPY_DATABASE_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
-      - VNPY_DATABASE_DATABASE=${MYSQL_DATABASE:-vnpy}
+      - VNPY_DATABASE_DRIVER=postgresql
+      - VNPY_DATABASE_HOST=postgres-db
+      - VNPY_DATABASE_PORT=5432
+      - VNPY_DATABASE_USER=${POSTGRES_USER:-postgres}
+      - VNPY_DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - VNPY_DATABASE_DATABASE=${POSTGRES_DB:-vnpy}
     volumes:
       - ../logs:/app/logs  # 挂载日志
     depends_on:
-      mysql-db:
+      postgres-db:
         condition: service_healthy
 
   # --- 15分钟策略 ---
@@ -52,18 +54,19 @@ services:
     # 核心：直接指定启动 15m 的配置
     command: python src/main/main.py --mode daemon --config config/strategy_config.yaml --override-config config/timeframe/15m.yaml
     environment:
-      - VNPY_DATABASE_DRIVER=mysql
-      - VNPY_DATABASE_HOST=mysql-db
-      - VNPY_DATABASE_USER=root
-      - VNPY_DATABASE_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
-      - VNPY_DATABASE_DATABASE=${MYSQL_DATABASE:-vnpy}
+      - VNPY_DATABASE_DRIVER=postgresql
+      - VNPY_DATABASE_HOST=postgres-db
+      - VNPY_DATABASE_PORT=5432
+      - VNPY_DATABASE_USER=${POSTGRES_USER:-postgres}
+      - VNPY_DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - VNPY_DATABASE_DATABASE=${POSTGRES_DB:-vnpy}
     volumes:
       - ../logs:/app/logs
       # 挂载 config 目录，允许微调配置不重启
       - ../config:/app/config
     depends_on:
-      mysql-db:
+      postgres-db:
         condition: service_healthy
 
 volumes:
-  mysql_data:
+  postgres_data:

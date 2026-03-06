@@ -34,32 +34,32 @@ class HistoryDataRepository:
         # 过滤无效 symbol
         vt_symbols = [s for s in vt_symbols if isinstance(s, str) and s]
         if not vt_symbols:
-            self.logger.error("MySQL warmup 回放失败: 没有可用的 vt_symbol 列表")
+            self.logger.error("Postgres warmup 回放失败: 没有可用的 vt_symbol 列表")
             return False
 
         try:
             db = get_database()
         except Exception:
-            self.logger.error("MySQL warmup 回放失败: 初始化 vn.py DatabaseManager 失败", exc_info=True)
+            self.logger.error("Postgres warmup 回放失败: 初始化 vn.py DatabaseManager 失败", exc_info=True)
             return False
 
         end = datetime.now()
         start = end - timedelta(days=int(days))
 
-        self.logger.info(f"MySQL warmup 开始: days={days}, symbols={len(vt_symbols)}, range={start} ~ {end}")
+        self.logger.info(f"Postgres warmup 开始: days={days}, symbols={len(vt_symbols)}, range={start} ~ {end}")
 
         ok = False
         total_bars = 0
         for vt_symbol in vt_symbols:
             if "." not in vt_symbol:
-                self.logger.warning(f"MySQL warmup 跳过无效 vt_symbol: {vt_symbol}")
+                self.logger.warning(f"Postgres warmup 跳过无效 vt_symbol: {vt_symbol}")
                 continue
 
             symbol_part, exchange_str = vt_symbol.split(".", 1)
             try:
                 exchange = Exchange(exchange_str)
             except Exception:
-                self.logger.warning(f"MySQL warmup 跳过无法解析交易所: {vt_symbol}")
+                self.logger.warning(f"Postgres warmup 跳过无法解析交易所: {vt_symbol}")
                 continue
 
             try:
@@ -71,22 +71,22 @@ class HistoryDataRepository:
                     end=end,
                 )
             except Exception:
-                self.logger.error(f"MySQL warmup 读取 bar 失败: {vt_symbol}", exc_info=True)
+                self.logger.error(f"Postgres warmup 读取 bar 失败: {vt_symbol}", exc_info=True)
                 continue
 
             if not bars:
-                self.logger.warning(f"MySQL warmup 无数据: {vt_symbol}")
+                self.logger.warning(f"Postgres warmup 无数据: {vt_symbol}")
                 continue
 
             ok = True
             total_bars += len(bars)
-            self.logger.info(f"MySQL warmup 加载成功: {vt_symbol}, bars={len(bars)}")
+            self.logger.info(f"Postgres warmup 加载成功: {vt_symbol}, bars={len(bars)}")
             for bar in bars:
                 try:
                     on_bars_callback({vt_symbol: bar})
                 except Exception:
-                    self.logger.error(f"MySQL warmup 推送 bar 失败: {vt_symbol}", exc_info=True)
+                    self.logger.error(f"Postgres warmup 推送 bar 失败: {vt_symbol}", exc_info=True)
                     continue
 
-        self.logger.info(f"MySQL warmup 完成: ok={ok}, total_bars={total_bars}")
+        self.logger.info(f"Postgres warmup 完成: ok={ok}, total_bars={total_bars}")
         return ok

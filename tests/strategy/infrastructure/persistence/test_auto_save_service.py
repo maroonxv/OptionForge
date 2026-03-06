@@ -18,7 +18,7 @@ from hypothesis import given, settings, strategies as st
 # Mock vnpy modules before importing anything that touches database_factory
 for _mod_name in [
     "vnpy", "vnpy.event", "vnpy.trader", "vnpy.trader.setting",
-    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_mysql",
+    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_postgresql",
 ]:
     if _mod_name not in sys.modules:
         sys.modules[_mod_name] = MagicMock()

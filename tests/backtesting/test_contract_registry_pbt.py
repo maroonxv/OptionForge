@@ -55,7 +55,7 @@ _obj_mod = MagicMock()
 _obj_mod.ContractData = _ContractData
 
 for _name in ["vnpy", "vnpy.event", "vnpy.trader", "vnpy.trader.setting",
-               "vnpy.trader.engine", "vnpy.trader.database", "vnpy_mysql"]:
+               "vnpy.trader.engine", "vnpy.trader.database", "vnpy_postgresql"]:
     if _name not in sys.modules:
         sys.modules[_name] = MagicMock()
 

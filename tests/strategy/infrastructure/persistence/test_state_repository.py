@@ -23,7 +23,7 @@ from peewee import SqliteDatabase
 # Mock vnpy modules before importing database_factory (avoids __init__.py chain)
 for _mod_name in [
     "vnpy", "vnpy.event", "vnpy.trader", "vnpy.trader.setting",
-    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_mysql",
+    "vnpy.trader.engine", "vnpy.trader.database", "vnpy_postgresql",
 ]:
     if _mod_name not in sys.modules:
         sys.modules[_mod_name] = MagicMock()

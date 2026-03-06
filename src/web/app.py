@@ -1,5 +1,5 @@
 from flask import Flask, render_template, jsonify, request
-from reader import MySQLSnapshotReader, StrategyStateReader
+from reader import PostgresSnapshotReader, StrategyStateReader
 import os
 import json
 
@@ -11,30 +11,30 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 load_dotenv()
 
-mysql_reader = MySQLSnapshotReader()
+postgres_reader = PostgresSnapshotReader()
 state_reader = StrategyStateReader({
     "host": os.getenv("VNPY_DATABASE_HOST", ""),
-    "port": int(os.getenv("VNPY_DATABASE_PORT", "3306") or 3306),
+    "port": int(os.getenv("VNPY_DATABASE_PORT", "5432") or 5432),
     "user": os.getenv("VNPY_DATABASE_USER", ""),
     "password": os.getenv("VNPY_DATABASE_PASSWORD", ""),
     "database": os.getenv("VNPY_DATABASE_DATABASE", ""),
 })
 
-use_mysql = str(os.getenv("MONITOR_USE_MYSQL", "1")).lower() not in ("0", "false", "no", "off", "")
+use_postgres = str(os.getenv("MONITOR_USE_POSTGRES", "1")).lower() not in ("0", "false", "no", "off", "")
 
-_mysql_ready_cache = {"ts": 0.0, "ready": False}
+_postgres_ready_cache = {"ts": 0.0, "ready": False}
 
-def mysql_ready() -> bool:
-    if not (use_mysql and mysql_reader._db_available()):
+def postgres_ready() -> bool:
+    if not (use_postgres and postgres_reader._db_available()):
         return False
     import time
     now = time.time()
-    if now - _mysql_ready_cache["ts"] < 1.0:
-        return bool(_mysql_ready_cache["ready"])
+    if now - _postgres_ready_cache["ts"] < 1.0:
+        return bool(_postgres_ready_cache["ready"])
     ready = False
     try:
-        mysql_reader.ensure_tables()
-        conn = mysql_reader._connect()
+        postgres_reader.ensure_tables()
+        conn = postgres_reader._connect()
         if conn is not None:
             try:
                 with conn.cursor() as cursor:
@@ -47,8 +47,8 @@ def mysql_ready() -> bool:
                     pass
     except Exception:
         ready = False
-    _mysql_ready_cache["ts"] = now
-    _mysql_ready_cache["ready"] = ready
+    _postgres_ready_cache["ts"] = now
+    _postgres_ready_cache["ready"] = ready
     return ready
 
 def list_strategies_best_effort():
@@ -59,9 +59,9 @@ def list_strategies_best_effort():
             return rows
     except Exception:
         pass
-    # 2. Fall back to MySQLSnapshotReader (monitor_signal_snapshot table)
-    if mysql_ready():
-        rows = mysql_reader.list_available_strategies()
+    # 2. Fall back to PostgresSnapshotReader (monitor_signal_snapshot table)
+    if postgres_ready():
+        rows = postgres_reader.list_available_strategies()
         if rows:
             return rows
     return []
@@ -74,9 +74,9 @@ def get_snapshot_best_effort(variant_name: str):
             return data
     except Exception:
         pass
-    # 2. Fall back to MySQLSnapshotReader (monitor_signal_snapshot table)
-    if mysql_ready():
-        data = mysql_reader.get_strategy_data(variant_name)
+    # 2. Fall back to PostgresSnapshotReader (monitor_signal_snapshot table)
+    if postgres_ready():
+        data = postgres_reader.get_strategy_data(variant_name)
         if data:
             return data
     return None
@@ -140,8 +140,8 @@ def api_events(variant_name):
     end = request.args.get("end", "")
     event_type = request.args.get("type", "")
     limit = request.args.get("limit", "2000")
-    if mysql_ready():
-        events = mysql_reader.get_events(
+    if postgres_ready():
+        events = postgres_reader.get_events(
             variant=variant_name,
             vt_symbol=vt_symbol,
             start=start,
@@ -159,8 +159,8 @@ def api_bars():
     end = request.args.get("end", "")
     interval = request.args.get("interval", "1m")
     limit = request.args.get("limit", "5000")
-    if mysql_ready():
-        bars = mysql_reader.get_bars(
+    if postgres_ready():
+        bars = postgres_reader.get_bars(
             vt_symbol=vt_symbol,
             start=start,
             end=end,
@@ -183,7 +183,7 @@ if socketio is not None:
             return
 
     def poll_db():
-        mysql_reader.ensure_tables()
+        postgres_reader.ensure_tables()
         last_snapshot: dict = {}  # {strategy_name: saved_at}
         last_event_id = 0
         poll_interval = float(os.getenv("MONITOR_POLL_INTERVAL", "1.0") or 1.0)
@@ -205,9 +205,9 @@ if socketio is not None:
                     pass
 
                 # --- Event polling via monitor_signal_event table (unchanged) ---
-                if mysql_ready():
+                if postgres_ready():
                     try:
-                        conn = mysql_reader._connect()
+                        conn = postgres_reader._connect()
                         if conn is not None:
                             try:
                                 with conn.cursor() as cursor:

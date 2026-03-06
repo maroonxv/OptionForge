@@ -10,6 +10,7 @@
 Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 3.1, 3.2, 3.4, 3.5
 """
 
+import importlib
 import logging
 import os
 from typing import Any, ClassVar, List, Optional
@@ -20,6 +21,11 @@ from src.strategy.infrastructure.persistence.exceptions import (
 )
 
 logger = logging.getLogger(__name__)
+
+DRIVER_EXTENSION_MODULES = {
+    "postgres": "vnpy_postgresql",
+    "postgresql": "vnpy_postgresql",
+}
 
 REQUIRED_ENV_VARS = [
     "VNPY_DATABASE_DRIVER",
@@ -140,9 +146,9 @@ class DatabaseFactory:
         SETTINGS["database.host"] = os.getenv("VNPY_DATABASE_HOST", "localhost").strip()
 
         try:
-            port = int(os.getenv("VNPY_DATABASE_PORT", "3306").strip())
+            port = int(os.getenv("VNPY_DATABASE_PORT", "5432").strip())
         except (ValueError, TypeError):
-            port = 3306
+            port = 5432
         SETTINGS["database.port"] = port
 
         SETTINGS["database.user"] = os.getenv("VNPY_DATABASE_USER", "").strip()
@@ -150,14 +156,30 @@ class DatabaseFactory:
 
     @staticmethod
     def _configure_table_names() -> None:
-        """配置 vnpy_mysql 表名。"""
-        import vnpy_mysql
-        vnpy_mysql.DbBarData = getattr(vnpy_mysql, "DbBarData", None)
-        # 设置表名配置
-        if hasattr(vnpy_mysql, "DbBarData") and vnpy_mysql.DbBarData is not None:
-            vnpy_mysql.DbBarData._meta.table_name = "dbbardata"
-        if hasattr(vnpy_mysql, "DbTickData") and vnpy_mysql.DbTickData is not None:
-            vnpy_mysql.DbTickData._meta.table_name = "dbtickdata"
+        """配置数据库扩展表名。"""
+        extension_module = DatabaseFactory._load_driver_extension_module()
+        if extension_module is None:
+            return
+
+        db_bar_data = getattr(extension_module, "DbBarData", None)
+        if db_bar_data is not None:
+            db_bar_data._meta.table_name = "dbbardata"
+
+        db_tick_data = getattr(extension_module, "DbTickData", None)
+        if db_tick_data is not None:
+            db_tick_data._meta.table_name = "dbtickdata"
+
+    @staticmethod
+    def _load_driver_extension_module() -> Optional[Any]:
+        driver = os.getenv("VNPY_DATABASE_DRIVER", "").strip().lower()
+        module_name = DRIVER_EXTENSION_MODULES.get(driver)
+        if not module_name:
+            return None
+
+        try:
+            return importlib.import_module(module_name)
+        except Exception:
+            return None
 
     def _create_connections(self, timeout: float = 5.0) -> None:
         """创建数据库连接。"""
@@ -173,10 +195,9 @@ class DatabaseFactory:
             if hasattr(self._db, "db"):
                 self._peewee_db = self._db.db
             else:
-                # 尝试从 vnpy_mysql 获取
-                import vnpy_mysql
-                if hasattr(vnpy_mysql, "db"):
-                    self._peewee_db = vnpy_mysql.db
+                extension_module = self._load_driver_extension_module()
+                if extension_module is not None and hasattr(extension_module, "db"):
+                    self._peewee_db = extension_module.db
 
             # 验证连接
             if self._peewee_db is not None:

@@ -1,4 +1,4 @@
-"""策略状态仓库 — 基于 MySQL JSON 存储。
+"""策略状态仓库 — 基于 Postgres JSON 存储。
 
 职责:
 - 保存策略状态快照到 strategy_state 表（INSERT 追加）
@@ -41,7 +41,7 @@ class ArchiveNotFound:
 
 
 class StateRepository:
-    """策略状态仓库 — 基于 MySQL JSON 存储。"""
+    """策略状态仓库 — 基于 Postgres JSON 存储。"""
 
     def __init__(
         self,

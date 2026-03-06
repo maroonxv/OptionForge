@@ -1,7 +1,7 @@
 """
 SnapshotJsonTransformer.resolve_special_markers 属性测试
 
-Feature: web-mysql-state-reader
+Feature: web-postgres-state-reader
 Property 1: Special marker resolution produces only JSON-primitive types
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 3.4, 4.5**
 """

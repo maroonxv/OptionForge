@@ -24,7 +24,7 @@
 
 *   **交易框架**：VnPy 4.2.0 + vnpy_portfoliostrategy
 *   **CTP 网关**：vnpy_ctp 6.7.11（期货）、vnpy_sopt 3.7.1（期权）
-*   **数据库**：MySQL 8.0（vnpy_mysql）
+*   **数据库**：PostgreSQL 16（vnpy_postgresql）
 *   **容器化**：Docker + Docker Compose
 *   **监控面板**：Flask + Flask-SocketIO
 *   **技术指标**：TA-Lib
@@ -80,7 +80,7 @@
 │   │   └── discovery/                 # 合约代码生成、期权发现
 │   └── web/                           # 监控面板
 │       ├── app.py                     # Flask 应用（路由 + WebSocket）
-│       ├── reader.py                  # MySQL 快照读取器
+│       ├── reader.py                  # Postgres 快照读取器
 │       ├── templates/                 # HTML 模板
 │       └── static/                    # 前端 JS
 └── tests/                             # 测试
@@ -99,7 +99,7 @@ VnPy `StrategyTemplate` 的实现，负责：
 *   接收 VnPy 回调（`on_init`、`on_bars`、`on_tick`、`on_trade`、`on_order` 等）
 *   编排领域服务调用流程
 *   依赖注入：在 `on_init` 中初始化所有领域服务和基础设施组件
-*   Warmup 逻辑：回测模式直接加载历史 Bar；实盘模式从 MySQL 回放 + 状态恢复
+*   Warmup 逻辑：回测模式直接加载历史 Bar；实盘模式从 Postgres 回放 + 状态恢复
 *   合约宇宙管理：自动选择主力合约、每日 14:50 检查换月
 
 ### 2. 领域层（`domain/`）
@@ -156,7 +156,7 @@ VnPy `StrategyTemplate` 的实现，负责：
 | 模块 | 职责 |
 |------|------|
 | `StateRepository` | 策略状态存取（JSON 序列化） |
-| `HistoryDataRepository` | 从 MySQL 回放历史 K 线（Warmup 用） |
+| `HistoryDataRepository` | 从 Postgres 回放历史 K 线（Warmup 用） |
 | `AutoSaveService` | 定时自动保存（60 秒间隔） |
 | `JsonSerializer` | 序列化/反序列化 + 迁移链 |
 | `MigrationChain` | 状态版本迁移 |
@@ -165,7 +165,7 @@ VnPy `StrategyTemplate` 的实现，负责：
 | 模块 | 职责 |
 |------|------|
 | `BarPipeline` | K 线合成管道（1 分钟 → 任意周期） |
-| `StrategyMonitor` | 策略快照写入 MySQL（供面板读取） |
+| `StrategyMonitor` | 策略快照写入 Postgres（供面板读取） |
 | `FeishuEventHandler` | 飞书 Webhook 通知 |
 | `ContractHelper` | 合约代码解析工具 |
 
@@ -212,7 +212,7 @@ scripts\run_backtesting.bat
 
 ### 数据录制
 
-独立进程录制行情数据到 MySQL：
+独立进程录制行情数据到 Postgres：
 
 ```powershell
 scripts\run_datarecorder.bat
@@ -259,7 +259,7 @@ python -m src.backtesting.cli
 ### 数据流
 
 ```
-StrategyEntry → StrategyMonitor → MySQL (monitor_signal_snapshot / strategy_state)
+StrategyEntry → StrategyMonitor → Postgres (monitor_signal_snapshot / strategy_state)
                                       ↓
                               Web Dashboard (Flask)
                                       ↓
@@ -292,10 +292,10 @@ CTP_PRODUCT_NAME=your_product_name
 CTP_AUTH_CODE=your_auth_code
 
 # 数据库
-VNPY_DATABASE_DRIVER=mysql
+VNPY_DATABASE_DRIVER=postgresql
 VNPY_DATABASE_DATABASE=volatility_strategy
 VNPY_DATABASE_HOST=localhost
-VNPY_DATABASE_PORT=3306
+VNPY_DATABASE_PORT=5432
 VNPY_DATABASE_USER=root
 VNPY_DATABASE_PASSWORD=your_password
 
@@ -385,7 +385,7 @@ strategies:
 ### 1. 部署架构
 
 采用"统一镜像，多服务编排"架构，所有服务共享同一个 Docker 镜像：
-*   **`mysql-db`**: 数据库服务 (MySQL 8.0)
+*   **`postgres-db`**: 数据库服务 (PostgreSQL 16)
 *   **`dashboard`**: 监控面板服务 (端口 5007)
 *   **`strategy-15m`**: 15分钟周期策略服务（示例）
 *   可按需添加更多周期服务
@@ -517,7 +517,7 @@ class SignalService:
 修改 `config/strategy_config.yaml` 中的 `hedging` 部分，设置 `target_delta`、`hedging_band`、`rebalance_threshold` 等参数。
 
 ### 策略重启后如何恢复状态？
-策略会自动从持久化存储加载上次保存的状态（`StateRepository` + `AutoSaveService`），并从 MySQL 回放最近的 K 线数据进行 Warmup。
+策略会自动从持久化存储加载上次保存的状态（`StateRepository` + `AutoSaveService`），并从 Postgres 回放最近的 K 线数据进行 Warmup。
 
 ### 如何接入飞书通知？
 在 `.env` 中配置 `FEISHU_WEBHOOK_URL`。

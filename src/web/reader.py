@@ -4,11 +4,16 @@ import glob
 import pickle
 import json
 import re
-import pymysql
-import pymysql.cursors
 import pandas as pd
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+except Exception:
+    psycopg2 = None
+    RealDictCursor = None
 
 # 将项目根目录添加到 sys.path 以允许反序列化策略对象
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -306,17 +311,19 @@ class StrategyStateReader:
     def _connect(self):
         if not self._db_available():
             return None
+        if psycopg2 is None or RealDictCursor is None:
+            return None
         try:
-            return pymysql.connect(
+            conn = psycopg2.connect(
                 host=self._db_config["host"],
-                port=int(self._db_config.get("port", 3306)),
+                port=int(self._db_config.get("port", 5432)),
                 user=self._db_config["user"],
                 password=self._db_config.get("password", ""),
-                database=self._db_config["database"],
-                charset="utf8mb4",
-                autocommit=True,
-                cursorclass=pymysql.cursors.DictCursor,
+                dbname=self._db_config["database"],
+                cursor_factory=RealDictCursor,
             )
+            conn.autocommit = True
+            return conn
         except Exception:
             return None
 
@@ -394,7 +401,7 @@ class StrategyStateReader:
             snapshot = row.get("snapshot_json")
             if snapshot is None:
                 return None
-            # snapshot_json 可能是 dict（pymysql JSON 自动解析）或 str
+            # snapshot_json 可能是 dict（驱动自动解析 JSON）或 str
             if isinstance(snapshot, str):
                 try:
                     snapshot = json.loads(snapshot)
@@ -586,12 +593,12 @@ class SnapshotReader:
 
 
 
-class MySQLSnapshotReader:
+class PostgresSnapshotReader:
     def __init__(self):
         self.instance_id = os.getenv("MONITOR_INSTANCE_ID", "default") or "default"
         self._db_config = {
             "host": os.getenv("VNPY_DATABASE_HOST", "") or "",
-            "port": int(os.getenv("VNPY_DATABASE_PORT", "3306") or 3306),
+            "port": int(os.getenv("VNPY_DATABASE_PORT", "5432") or 5432),
             "user": os.getenv("VNPY_DATABASE_USER", "") or "",
             "password": os.getenv("VNPY_DATABASE_PASSWORD", "") or "",
             "database": os.getenv("VNPY_DATABASE_DATABASE", "") or "",
@@ -605,17 +612,19 @@ class MySQLSnapshotReader:
     def _connect(self):
         if not self._db_available():
             return None
+        if psycopg2 is None or RealDictCursor is None:
+            return None
         try:
-            return pymysql.connect(
+            conn = psycopg2.connect(
                 host=self._db_config["host"],
                 port=int(self._db_config["port"]),
                 user=self._db_config["user"],
                 password=self._db_config["password"],
-                database=self._db_config["database"],
-                charset="utf8mb4",
-                autocommit=True,
-                cursorclass=pymysql.cursors.DictCursor,
+                dbname=self._db_config["database"],
+                cursor_factory=RealDictCursor,
             )
+            conn.autocommit = True
+            return conn
         except Exception:
             return None
 
@@ -630,37 +639,62 @@ class MySQLSnapshotReader:
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS monitor_signal_snapshot (
-                      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                      id BIGSERIAL PRIMARY KEY,
                       variant VARCHAR(64) NOT NULL,
                       instance_id VARCHAR(64) NOT NULL,
-                      updated_at DATETIME(6) NOT NULL,
-                      bar_dt DATETIME(6) NULL,
+                      updated_at TIMESTAMP(6) NOT NULL,
+                      bar_dt TIMESTAMP(6) NULL,
                       bar_interval VARCHAR(16) NULL,
                       bar_window INT NULL,
-                      payload_json JSON NOT NULL,
-                      UNIQUE KEY uk_variant_instance (variant, instance_id),
-                      KEY idx_updated_at (updated_at),
-                      KEY idx_bar_dt (bar_dt)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                      payload_json JSONB NOT NULL,
+                      CONSTRAINT uk_variant_instance UNIQUE (variant, instance_id)
+                    );
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_monitor_signal_snapshot_updated_at
+                    ON monitor_signal_snapshot (updated_at);
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_monitor_signal_snapshot_bar_dt
+                    ON monitor_signal_snapshot (bar_dt);
                     """
                 )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS monitor_signal_event (
-                      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                      id BIGSERIAL PRIMARY KEY,
                       variant VARCHAR(64) NOT NULL,
                       instance_id VARCHAR(64) NOT NULL,
                       vt_symbol VARCHAR(64) NOT NULL,
-                      bar_dt DATETIME(6) NULL,
+                      bar_dt TIMESTAMP(6) NULL,
                       event_type VARCHAR(32) NOT NULL,
                       event_key VARCHAR(192) NOT NULL,
-                      created_at DATETIME(6) NOT NULL,
-                      payload_json JSON NOT NULL,
-                      UNIQUE KEY uk_event_key (event_key),
-                      KEY idx_variant_created (variant, created_at),
-                      KEY idx_symbol_bar (vt_symbol, bar_dt),
-                      KEY idx_type_created (event_type, created_at)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                      created_at TIMESTAMP(6) NOT NULL,
+                      payload_json JSONB NOT NULL,
+                      CONSTRAINT uk_event_key UNIQUE (event_key)
+                    );
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_monitor_signal_event_variant_created
+                    ON monitor_signal_event (variant, created_at);
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_monitor_signal_event_symbol_bar
+                    ON monitor_signal_event (vt_symbol, bar_dt);
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_monitor_signal_event_type_created
+                    ON monitor_signal_event (event_type, created_at);
                     """
                 )
             self._tables_ensured = True

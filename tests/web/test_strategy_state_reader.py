@@ -37,7 +37,7 @@ class TestConnectionFailure:
 
 
 # ---------------------------------------------------------------------------
-# 2. Malformed JSON tests (mock pymysql)
+# 2. Malformed JSON tests (mock postgres connection)
 # ---------------------------------------------------------------------------
 
 def _make_mock_conn(fetchone_return=None, fetchall_return=None):
@@ -86,7 +86,7 @@ class TestMalformedJson:
 
 
 # ---------------------------------------------------------------------------
-# 3. Normal flow tests (mock pymysql)
+# 3. Normal flow tests (mock postgres connection)
 # ---------------------------------------------------------------------------
 
 class TestNormalFlow:

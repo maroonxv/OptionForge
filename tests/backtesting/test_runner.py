@@ -43,7 +43,7 @@ _cm.OptionType = _OptionType
 _cm.Interval = _Interval
 _om = MagicMock()
 _om.ContractData = _ContractData
-for _n in ["vnpy", "vnpy.event", "vnpy.event.engine", "vnpy.trader", "vnpy.trader.setting", "vnpy.trader.engine", "vnpy.trader.database", "vnpy_mysql", "vnpy_portfoliostrategy", "vnpy_portfoliostrategy.utility"]:
+for _n in ["vnpy", "vnpy.event", "vnpy.event.engine", "vnpy.trader", "vnpy.trader.setting", "vnpy.trader.engine", "vnpy.trader.database", "vnpy_postgresql", "vnpy_portfoliostrategy", "vnpy_portfoliostrategy.utility"]:
     if _n not in sys.modules:
         sys.modules[_n] = MagicMock()
 sys.modules["vnpy.trader.constant"] = _cm
