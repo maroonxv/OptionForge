@@ -179,13 +179,13 @@ class ChildProcess:
             if not strategy_config_path.exists():
                 raise FileNotFoundError(f"策略配置文件不存在: {strategy_config_path}")
 
-            base_config = ConfigLoader.load_yaml(str(strategy_config_path))
+            base_config = ConfigLoader.load_toml(str(strategy_config_path))
             
             # 如果有覆盖配置，进行合并
             if self.override_config_path:
                 override_path = Path(self.override_config_path)
                 if override_path.exists():
-                    override_config = ConfigLoader.load_yaml(str(override_path))
+                    override_config = ConfigLoader.load_toml(str(override_path))
                     self.strategy_config = ConfigLoader.merge_strategy_config(base_config, override_config)
                     self.logger.info(f"已加载策略配置: {strategy_config_path} + {self.override_config_path}")
                 else:

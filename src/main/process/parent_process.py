@@ -97,11 +97,11 @@ class ParentProcess:
         """加载运行时配置"""
         try:
             # 加载基础配置
-            config = ConfigLoader.load_yaml(self.config_path)
+            config = ConfigLoader.load_toml(self.config_path)
             
             # 如果有覆盖配置，进行合并
             if self.override_config_path:
-                override_config = ConfigLoader.load_yaml(self.override_config_path)
+                override_config = ConfigLoader.load_toml(self.override_config_path)
                 # 注意：ConfigLoader.merge_strategy_config 主要合并 strategies 字段
                 # 如果 runtime 配置也在 override 中，我们需要手动合并 runtime 部分，
                 # 或者假设 merge_strategy_config 也能处理（目前看代码它只处理了 strategies）。
