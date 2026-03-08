@@ -12,6 +12,7 @@ from src import __version__
 from src.cli.commands.backtest import command as backtest_command
 from src.cli.commands.create import (
     CREATE_CLEAR_HELP,
+    CREATE_COMMAND_EXAMPLES,
     CREATE_COMMAND_HELP,
     CREATE_DEFAULT_HELP,
     CREATE_DESTINATION_HELP,
@@ -55,7 +56,7 @@ def app() -> None:
     """统一暴露初始化、运行、回测、校验与诊断命令。"""
 
 
-@app.command("create", help=CREATE_COMMAND_HELP)
+@app.command("create", help=f"{CREATE_COMMAND_HELP}\n\n\b\n{CREATE_COMMAND_EXAMPLES}")
 @click.argument("name", required=False)
 @click.option(
     "--destination",
