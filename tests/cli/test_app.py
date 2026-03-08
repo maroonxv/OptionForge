@@ -36,6 +36,10 @@ def test_create_help_uses_refined_copy() -> None:
 
     assert result.exit_code == 0
     assert "支持交互式向导，也支持通过 flags 一次性生成" in result.stdout
+    assert "常用示例：" in result.stdout
+    assert "option-scaffold create alpha_lab" in result.stdout
+    assert "option-scaffold create alpha_lab -y" in result.stdout
+    assert "option-scaffold create alpha_lab --preset ema-cross -d .\\projects" in result.stdout
     assert "项目输出父目录；最终会生成到 <destination>/<name>/。" in result.stdout
     assert "按能力组显式开启功能，可重复传入；适合非交互模式精确控制。" in result.stdout
     assert "按二级子能力显式关闭，可重复传入；用于更细粒度裁剪。" in result.stdout
@@ -127,6 +131,8 @@ def test_create_command_rejects_missing_nested_option_dependencies(tmp_path: Pat
 
     assert result.exit_code == 2
     assert "依赖" in result.stdout or "依赖" in result.stderr
+    assert "建议" in result.stdout or "建议" in result.stderr
+    assert "--with-option greeks-calculator" in result.stdout or "--with-option greeks-calculator" in result.stderr
 
 
 def test_create_command_rejects_semantic_mutex_options(tmp_path: Path) -> None:
@@ -151,6 +157,7 @@ def test_create_command_rejects_semantic_mutex_options(tmp_path: Path) -> None:
 
     assert result.exit_code == 2
     assert "不能同时启用" in result.stdout or "不能同时启用" in result.stderr
+    assert "建议" in result.stdout or "建议" in result.stderr
 
 
 def test_create_command_rejects_delta_neutral_option_selector_combo(tmp_path: Path) -> None:
@@ -171,6 +178,8 @@ def test_create_command_rejects_delta_neutral_option_selector_combo(tmp_path: Pa
 
     assert result.exit_code == 2
     assert "不兼容" in result.stdout or "不兼容" in result.stderr
+    assert "建议" in result.stdout or "建议" in result.stderr
+    assert "--preset custom" in result.stdout or "--preset custom" in result.stderr
 
 
 def test_run_command_forwards_arguments_to_legacy_main() -> None:

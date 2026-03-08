@@ -299,6 +299,26 @@ def capability_option_label(option: CapabilityOptionKey) -> str:
     return CAPABILITY_OPTION_LABELS[option]
 
 
+def _option_flag(option: CapabilityOptionKey) -> str:
+    return f"--with-option {option.value}"
+
+
+def _without_option_flag(option: CapabilityOptionKey) -> str:
+    return f"--without-option {option.value}"
+
+
+def _with_flag(capability: CapabilityKey) -> str:
+    return f"--with {capability.value}"
+
+
+def _without_flag(capability: CapabilityKey) -> str:
+    return f"--without {capability.value}"
+
+
+def _raise_validation_error(error: str, suggestion: str) -> None:
+    raise ValueError(f"{error} 建议：{suggestion}")
+
+
 def validate_enabled_options(
     enabled_options: tuple[CapabilityOptionKey, ...],
     *,
@@ -313,18 +333,28 @@ def validate_enabled_options(
         missing = tuple(dependency for dependency in dependencies if dependency not in enabled_set)
         if missing:
             dependency_names = "、".join(capability_option_label(item) for item in missing)
-            raise ValueError(
-                f"子选项 `{option.value}` 依赖 {dependency_names}，请补齐依赖后再生成。"
+            dependency_flags = " ".join(_option_flag(item) for item in missing)
+            _raise_validation_error(
+                f"子选项 `{option.value}` 依赖 {dependency_names}。",
+                f"补上 {dependency_flags}，或删除 {_option_flag(option)}。",
             )
 
     for (left, right), reason in CAPABILITY_OPTION_MUTEX_RULES:
         if left in enabled_set and right in enabled_set:
-            raise ValueError(f"子选项 `{left.value}` 与 `{right.value}` 不能同时启用：{reason}")
+            _raise_validation_error(
+                f"子选项 `{left.value}` 与 `{right.value}` 不能同时启用：{reason}",
+                f"保留其中一个，删除 {_option_flag(left)} 或 {_option_flag(right)}。",
+            )
 
     preset_rules = PRESET_OPTION_BLOCKLISTS.get(preset_key or "", {})
     for option, reason in preset_rules.items():
         if option in enabled_set:
-            raise ValueError(f"子选项 `{option.value}` 与预设 `{preset_key}` 不兼容：{reason}")
+            alternative_presets = [key for key in build_preset_catalog().keys() if key != (preset_key or "")]
+            suggested_preset = alternative_presets[0] if alternative_presets else DEFAULT_PRESET_KEY
+            _raise_validation_error(
+                f"子选项 `{option.value}` 与预设 `{preset_key}` 不兼容：{reason}",
+                f"删除 {_option_flag(option)}，或改用 `--preset {suggested_preset}`。",
+            )
 
     return enabled_options
 
@@ -357,14 +387,22 @@ def resolve_capability_options(
     overlap = include_set & exclude_set
     if overlap:
         names = ", ".join(sorted(item.value for item in overlap))
-        raise ValueError(f"同一能力不能同时出现在 --with 和 --without 中: {names}")
+        capability = sorted(overlap, key=lambda item: item.value)[0]
+        _raise_validation_error(
+            f"同一能力不能同时出现在 --with 和 --without 中: {names}。",
+            f"保留 {_with_flag(capability)} 或 {_without_flag(capability)} 其中一个。",
+        )
 
     include_option_set = set(include_options)
     exclude_option_set = set(exclude_options)
     option_overlap = include_option_set & exclude_option_set
     if option_overlap:
         names = ", ".join(sorted(item.value for item in option_overlap))
-        raise ValueError(f"同一子选项不能同时出现在 --with-option 和 --without-option 中: {names}")
+        option = sorted(option_overlap, key=lambda item: item.value)[0]
+        _raise_validation_error(
+            f"同一子选项不能同时出现在 --with-option 和 --without-option 中: {names}。",
+            f"保留 {_option_flag(option)} 或 {_without_option_flag(option)} 其中一个。",
+        )
 
     resolved = set(preset.default_options)
     for capability in include_capabilities:

@@ -132,7 +132,7 @@ def test_create_project_scaffold_supports_nested_option_overrides(tmp_path: Path
 
 
 def test_create_project_scaffold_rejects_conflicting_nested_option_overrides(tmp_path: Path) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="建议"):
         create_project_scaffold(
             CreateOptions(
                 name="bad_nested",
@@ -146,7 +146,7 @@ def test_create_project_scaffold_rejects_conflicting_nested_option_overrides(tmp
 
 
 def test_create_project_scaffold_rejects_missing_option_dependencies(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="依赖"):
+    with pytest.raises(ValueError, match="建议") as exc_info:
         create_project_scaffold(
             CreateOptions(
                 name="bad_dependency",
@@ -157,10 +157,11 @@ def test_create_project_scaffold_rejects_missing_option_dependencies(tmp_path: P
                 no_interactive=True,
             )
         )
+    assert "--with-option greeks-calculator" in str(exc_info.value)
 
 
 def test_create_project_scaffold_rejects_semantic_mutex_options(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="不能同时启用"):
+    with pytest.raises(ValueError, match="建议") as exc_info:
         create_project_scaffold(
             CreateOptions(
                 name="bad_mutex",
@@ -174,10 +175,11 @@ def test_create_project_scaffold_rejects_semantic_mutex_options(tmp_path: Path) 
                 no_interactive=True,
             )
         )
+    assert "删除 --with-option delta-hedging 或 --with-option vega-hedging" in str(exc_info.value)
 
 
 def test_create_project_scaffold_rejects_preset_specific_blocked_options(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="不兼容"):
+    with pytest.raises(ValueError, match="建议") as exc_info:
         create_project_scaffold(
             CreateOptions(
                 name="bad_delta_neutral",
@@ -187,6 +189,7 @@ def test_create_project_scaffold_rejects_preset_specific_blocked_options(tmp_pat
                 no_interactive=True,
             )
         )
+    assert "删除 --with-option option-selector" in str(exc_info.value)
 
 
 def test_create_project_scaffold_requires_explicit_conflict_policy_in_non_interactive_mode(
