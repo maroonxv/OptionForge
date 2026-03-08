@@ -13,6 +13,7 @@ from ..domain.aggregate.combination_aggregate import CombinationAggregate
 from ..domain.aggregate.position_aggregate import PositionAggregate
 from ..domain.aggregate.target_instrument_aggregate import InstrumentManager
 from ..domain.domain_service.pricing import GreeksCalculator
+from ..domain.domain_service.pricing.pricing_engine import PricingEngine
 from ..domain.domain_service.risk.portfolio_risk_aggregator import PortfolioRiskAggregator
 from ..domain.domain_service.risk.position_sizing_service import PositionSizingService
 from ..domain.domain_service.selection.future_selection_service import FutureSelectionService
@@ -62,12 +63,21 @@ class LifecycleWorkflow:
 
         project_root = Path(__file__).resolve().parents[3]
 
-        # ── 加载 `strategy_config.toml` ──
-        try:
-            strategy_config_path = str(project_root / "config" / "strategy_config.toml")
-            full_config = ConfigLoader.load_toml(strategy_config_path)
-        except Exception:
-            full_config = {}
+        full_config = dict(self.entry.setting.get("strategy_full_config") or {})
+        if not full_config:
+            try:
+                strategy_config_path = str(project_root / "config" / "strategy_config.toml")
+                full_config = ConfigLoader.load_toml(strategy_config_path)
+            except Exception:
+                full_config = {}
+
+        self.entry.strategy_contracts = dict(full_config.get("strategy_contracts") or {})
+        self.entry.service_activation = ConfigLoader.resolve_service_activation(full_config)
+        self.entry.observability_config = dict(full_config.get("observability") or {})
+        self.entry.decision_journal_limit = max(
+            10,
+            int(self.entry.observability_config.get("decision_journal_maxlen", 200) or 200),
+        )
 
         try:
             subscription_config_path = project_root / "config" / "subscription" / "subscription.toml"
@@ -80,29 +90,59 @@ class LifecycleWorkflow:
             self.entry.subscription_config = {"enabled": False}
         self.entry._init_subscription_management()
 
-        self.entry.indicator_service = IndicatorService()
-        self.entry.signal_service = SignalService()
+        indicator_service_path = self.entry.strategy_contracts.get(
+            "indicator_service",
+            "src.strategy.domain.domain_service.signal.indicator_service:IndicatorService",
+        )
+        signal_service_path = self.entry.strategy_contracts.get(
+            "signal_service",
+            "src.strategy.domain.domain_service.signal.signal_service:SignalService",
+        )
+        indicator_kwargs = dict(self.entry.strategy_contracts.get("indicator_kwargs") or {})
+        signal_kwargs = dict(self.entry.strategy_contracts.get("signal_kwargs") or {})
+
+        indicator_cls = ConfigLoader.import_from_string(indicator_service_path)
+        signal_cls = ConfigLoader.import_from_string(signal_service_path)
+        self.entry.indicator_service = indicator_cls(**indicator_kwargs)
+        self.entry.signal_service = signal_cls(**signal_kwargs)
 
         # ── 从 TOML 配置与 YAML 覆盖加载领域服务配置 ──
         from src.main.config.domain_service_config_loader import (
             load_position_sizing_config,
+            load_pricing_engine_config,
             load_future_selector_config,
             load_option_selector_config,
         )
 
         ps_cfg = full_config.get("position_sizing", {})
         ps_overrides = {**ps_cfg, "max_positions": self.entry.max_positions}
-        self.entry.position_sizing_service = PositionSizingService(
-            config=load_position_sizing_config(overrides=ps_overrides)
-        )
-        self.entry.future_selection_service = FutureSelectionService(
-            config=load_future_selector_config()
-        )
-        self.entry.option_selector_service = OptionSelectorService(
-            config=load_option_selector_config(
-                overrides={"strike_level": self.entry.strike_level}
+        self.entry.position_sizing_service = None
+        if self.entry.service_activation.get("position_sizing"):
+            self.entry.position_sizing_service = PositionSizingService(
+                config=load_position_sizing_config(overrides=ps_overrides)
             )
-        )
+
+        self.entry.future_selection_service = None
+        if self.entry.service_activation.get("future_selection", True):
+            self.entry.future_selection_service = FutureSelectionService(
+                config=load_future_selector_config()
+            )
+
+        self.entry.option_selector_service = None
+        if self.entry.service_activation.get("option_selector", True):
+            self.entry.option_selector_service = OptionSelectorService(
+                config=load_option_selector_config(
+                    overrides={"strike_level": self.entry.strike_level}
+                )
+            )
+
+        self.entry.pricing_engine = None
+        if self.entry.service_activation.get("pricing_engine"):
+            self.entry.pricing_engine = PricingEngine(
+                config=load_pricing_engine_config(
+                    overrides=full_config.get("pricing_engine", {})
+                )
+            )
 
         # ── 希腊值风控与订单执行增强 ──
 
@@ -118,6 +158,8 @@ class LifecycleWorkflow:
             portfolio_gamma_limit=portfolio_limits.get("gamma", 1.0),
             portfolio_vega_limit=portfolio_limits.get("vega", 500.0),
         )
+        self.entry.risk_thresholds = risk_thresholds
+        self.entry.risk_free_rate = float(greeks_risk_cfg.get("risk_free_rate", 0.02) or 0.02)
 
         order_exec_cfg = full_config.get("order_execution", {})
         order_config = OrderExecutionConfig(
@@ -126,11 +168,25 @@ class LifecycleWorkflow:
             slippage_ticks=order_exec_cfg.get("slippage_ticks", 2),
         )
 
-        self.entry.greeks_calculator = GreeksCalculator()
-        self.entry.portfolio_risk_aggregator = PortfolioRiskAggregator(risk_thresholds)
-        self.entry.smart_order_executor = SmartOrderExecutor(order_config)
-        self.entry.logger.info(f"Greeks 风控已启用: position_limits={position_limits}, portfolio_limits={portfolio_limits}")
-        self.entry.logger.info(f"订单执行增强已启用: timeout={order_config.timeout_seconds}s, max_retries={order_config.max_retries}")
+        self.entry.greeks_calculator = GreeksCalculator() if self.entry.service_activation.get("greeks_calculator") else None
+        self.entry.portfolio_risk_aggregator = (
+            PortfolioRiskAggregator(risk_thresholds)
+            if self.entry.service_activation.get("portfolio_risk")
+            else None
+        )
+        self.entry.smart_order_executor = (
+            SmartOrderExecutor(order_config)
+            if self.entry.service_activation.get("smart_order_executor")
+            else None
+        )
+        if self.entry.greeks_calculator or self.entry.portfolio_risk_aggregator:
+            self.entry.logger.info(
+                f"Greeks 风控能力已装配: position_limits={position_limits}, portfolio_limits={portfolio_limits}"
+            )
+        if self.entry.smart_order_executor:
+            self.entry.logger.info(
+                f"订单执行增强已装配: timeout={order_config.timeout_seconds}s, max_retries={order_config.max_retries}"
+            )
 
         # ______________________________  3. 创建领域聚合根  ______________________________
 
@@ -153,12 +209,14 @@ class LifecycleWorkflow:
             "password": os.getenv("VNPY_DATABASE_PASSWORD", "") or "",
             "database": os.getenv("VNPY_DATABASE_DATABASE", "") or "",
         }
-        self.entry.monitor = StrategyMonitor(
-            variant_name=variant_name,
-            monitor_instance_id=os.getenv("MONITOR_INSTANCE_ID", "default") or "default",
-            monitor_db_config=monitor_db_config,
-            logger=self.entry.logger
-        )
+        self.entry.monitor = None
+        if self.entry.service_activation.get("monitoring", True):
+            self.entry.monitor = StrategyMonitor(
+                variant_name=variant_name,
+                monitor_instance_id=os.getenv("MONITOR_INSTANCE_ID", "default") or "default",
+                monitor_db_config=monitor_db_config,
+                logger=self.entry.logger
+            )
 
         # 创建 `JsonSerializer` 实例，供 `StateRepository` 与 `AutoSaveService` 共享
         self.entry.json_serializer = JsonSerializer()
