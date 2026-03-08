@@ -1,0 +1,864 @@
+﻿body.monitor-terminal {
+    --bg-0: #0b1118;
+    --bg-1: #131b26;
+    --panel-bg: #141b24;
+    --panel-strong: #101720;
+    --panel-frost: #171f2a;
+    --panel-alt: #0e141c;
+    --border-soft: rgba(132, 145, 163, 0.18);
+    --border-strong: rgba(132, 145, 163, 0.3);
+    --text-primary: #eef3f8;
+    --text-secondary: #9caabd;
+    --text-dim: #707f92;
+    --accent-cyan: #91b6ff;
+    --accent-amber: #d9ac58;
+    --accent-green: #74b982;
+    --accent-red: #de7766;
+    --radius-xl: 18px;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+    --shadow-main: 0 18px 40px rgba(2, 8, 14, 0.3);
+    --shadow-soft: 0 10px 22px rgba(2, 8, 14, 0.18);
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text-primary);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 20%),
+        linear-gradient(135deg, var(--bg-0), var(--bg-1) 58%, #172131 100%);
+}
+
+body.monitor-terminal::before {
+    inset: 0;
+    z-index: -2;
+    opacity: 0.28;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.8), transparent 95%);
+}
+
+body.monitor-terminal::after {
+    inset: 0;
+    z-index: -1;
+    opacity: 1;
+    background:
+        radial-gradient(circle at top left, rgba(145, 182, 255, 0.08), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(217, 172, 88, 0.08), transparent 28%);
+}
+
+body.monitor-terminal,
+body.monitor-terminal .surface-card,
+body.monitor-terminal .hero-panel,
+body.monitor-terminal .decision-focus,
+body.monitor-terminal .decision-stack,
+body.monitor-terminal .overview-card,
+body.monitor-terminal .metric-chip,
+body.monitor-terminal .sys-item,
+body.monitor-terminal .decision-stage-body,
+body.monitor-terminal .decision-summary,
+body.monitor-terminal .decision-item,
+body.monitor-terminal .switch-row,
+body.monitor-terminal .table-wrap,
+body.monitor-terminal .btn-refresh,
+body.monitor-terminal .status-tag,
+body.monitor-terminal .decision-pill,
+body.monitor-terminal .decision-signal,
+body.monitor-terminal .decision-stage-chip,
+body.monitor-terminal .decision-empty,
+body.monitor-terminal .form-select,
+body.monitor-terminal .form-check-input {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+body.monitor-terminal .hero-panel::before,
+body.monitor-terminal .surface-card::before {
+    display: none;
+}
+
+body.monitor-terminal .dashboard-shell {
+    max-width: 1800px;
+    padding: 28px 24px 40px;
+}
+
+body.monitor-terminal .animate-rise {
+    opacity: 1;
+    transform: none;
+    animation: monitor-fade-in 180ms ease-out both;
+}
+
+body.monitor-terminal .delay-1,
+body.monitor-terminal .delay-2,
+body.monitor-terminal .delay-3,
+body.monitor-terminal .delay-4 {
+    animation-delay: 0s;
+}
+
+@keyframes monitor-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+body.monitor-terminal .hero-panel,
+body.monitor-terminal .surface-card {
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-xl);
+    background: var(--panel-bg);
+    box-shadow: var(--shadow-main);
+    overflow: hidden;
+}
+
+body.monitor-terminal.feed-live .hero-panel {
+    border-color: rgba(145, 182, 255, 0.34);
+}
+
+body.monitor-terminal .hero-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+    gap: 24px;
+    padding: 28px;
+    margin-bottom: 24px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 70%),
+        var(--panel-bg);
+}
+
+body.monitor-terminal .hero-main {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+}
+
+body.monitor-terminal .hero-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+body.monitor-terminal .eyebrow {
+    display: none;
+}
+
+body.monitor-terminal h1,
+body.monitor-terminal h2,
+body.monitor-terminal h3,
+body.monitor-terminal h4 {
+    letter-spacing: -0.03em;
+}
+
+body.monitor-terminal .hero-main h1 {
+    margin: 0;
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    font-size: clamp(1.9rem, 2.7vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.08;
+}
+
+body.monitor-terminal .hero-summary {
+    max-width: 760px;
+    margin: 10px 0 0;
+    color: var(--text-secondary);
+    font-size: 0.98rem;
+    line-height: 1.7;
+}
+
+body.monitor-terminal .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+body.monitor-terminal .live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+}
+
+body.monitor-terminal .live-indicator .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #707f92;
+    box-shadow: none;
+}
+
+body.monitor-terminal .live-indicator.is-live {
+    border-color: rgba(116, 185, 130, 0.34);
+    color: #c7ead0;
+    background: rgba(116, 185, 130, 0.08);
+}
+
+body.monitor-terminal .live-indicator.is-live .dot {
+    background: var(--accent-green);
+}
+
+body.monitor-terminal .update-time {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.78rem;
+}
+
+body.monitor-terminal .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+}
+
+body.monitor-terminal .overview-card {
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.monitor-terminal .overview-label {
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.05em;
+}
+
+body.monitor-terminal .overview-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+body.monitor-terminal .overview-value-code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 1.02rem;
+}
+
+body.monitor-terminal .hero-controls {
+    display: grid;
+    align-content: space-between;
+    gap: 18px;
+    padding-left: 24px;
+    border-left: 1px solid var(--border-soft);
+}
+
+body.monitor-terminal .control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+body.monitor-terminal .control-field {
+    display: grid;
+    gap: 7px;
+}
+
+body.monitor-terminal .control-label {
+    margin: 0;
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+}
+
+body.monitor-terminal .form-select {
+    min-height: 42px;
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background-color: var(--panel-strong);
+    color: var(--text-primary);
+    font-size: 0.94rem;
+}
+
+body.monitor-terminal .form-select:focus {
+    border-color: rgba(145, 182, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(145, 182, 255, 0.12);
+}
+
+body.monitor-terminal .control-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body.monitor-terminal .btn-refresh {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid rgba(145, 182, 255, 0.28);
+    border-radius: 12px;
+    background: #243041;
+    color: var(--text-primary);
+    font-weight: 500;
+    box-shadow: none;
+}
+
+body.monitor-terminal .btn-refresh:hover,
+body.monitor-terminal .btn-refresh:focus {
+    border-color: rgba(145, 182, 255, 0.42);
+    background: #2d3a4e;
+    color: #ffffff;
+}
+
+body.monitor-terminal .switch-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+}
+
+body.monitor-terminal .switch-row label {
+    margin: 0;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
+body.monitor-terminal .form-check-input {
+    width: 2.1em;
+    height: 1.15em;
+    margin-top: 0;
+    border: 1px solid var(--border-strong);
+    background-color: #1d2632;
+}
+
+body.monitor-terminal .form-check-input:checked {
+    border-color: rgba(116, 185, 130, 0.34);
+    background-color: var(--accent-green);
+}
+
+body.monitor-terminal .surface-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 24px 18px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+body.monitor-terminal .surface-head-wide {
+    align-items: flex-start;
+}
+
+body.monitor-terminal .surface-head h2,
+body.monitor-terminal .surface-head h3 {
+    margin: 0;
+    font-family: "Noto Sans SC", sans-serif;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+body.monitor-terminal .surface-head h2 {
+    font-size: 1.28rem;
+}
+
+body.monitor-terminal .surface-head h3 {
+    font-size: 1rem;
+}
+
+body.monitor-terminal .subtle-meta {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.65;
+}
+
+body.monitor-terminal .metric-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+body.monitor-terminal .metric-chip {
+    display: grid;
+    gap: 4px;
+    min-width: 92px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    background: var(--panel-alt);
+}
+
+body.monitor-terminal .metric-chip span {
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+}
+
+body.monitor-terminal .metric-chip strong {
+    color: var(--text-primary);
+    font-size: 1.02rem;
+    font-weight: 600;
+}
+body.monitor-terminal .chart-shell {
+    padding: 18px 18px 20px;
+}
+
+body.monitor-terminal #chart-container {
+    height: 700px;
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.012), transparent 24%),
+        #0f141c;
+}
+
+body.monitor-terminal .side-stack {
+    display: grid;
+    gap: 18px;
+}
+
+body.monitor-terminal .table-wrap {
+    padding: 0 18px 18px;
+}
+
+body.monitor-terminal .order-table {
+    margin-bottom: 0;
+    color: var(--text-primary);
+}
+
+body.monitor-terminal .order-table thead th {
+    padding: 14px 0 10px;
+    border-bottom-color: var(--border-soft);
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+body.monitor-terminal .order-table td {
+    padding: 12px 0;
+    border-bottom-color: rgba(132, 145, 163, 0.12);
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+body.monitor-terminal .order-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+body.monitor-terminal .order-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+body.monitor-terminal .row-direction {
+    font-weight: 600;
+}
+
+body.monitor-terminal .text-success {
+    color: #9cdbac !important;
+}
+
+body.monitor-terminal .text-danger {
+    color: #f2a196 !important;
+}
+
+body.monitor-terminal .status-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+}
+
+body.monitor-terminal .status-live {
+    border-color: rgba(145, 182, 255, 0.28);
+    background: rgba(145, 182, 255, 0.08);
+    color: #dbe7ff;
+}
+
+body.monitor-terminal .status-filled {
+    border-color: rgba(116, 185, 130, 0.32);
+    background: rgba(116, 185, 130, 0.08);
+    color: #ccead3;
+}
+
+body.monitor-terminal .status-cancel {
+    border-color: rgba(217, 172, 88, 0.32);
+    background: rgba(217, 172, 88, 0.08);
+    color: #f0d8a8;
+}
+
+body.monitor-terminal .status-reject {
+    border-color: rgba(222, 119, 102, 0.32);
+    background: rgba(222, 119, 102, 0.08);
+    color: #f2c2bb;
+}
+
+body.monitor-terminal .empty-row {
+    color: var(--text-dim);
+    text-align: center;
+}
+
+body.monitor-terminal .decision-grid {
+    display: grid;
+    grid-template-columns: minmax(380px, 0.94fr) minmax(0, 1.06fr);
+    gap: 18px;
+    padding: 18px 20px 20px;
+}
+
+body.monitor-terminal .decision-stack,
+body.monitor-terminal .decision-focus {
+    min-width: 0;
+    min-height: 680px;
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    background: var(--panel-alt);
+}
+
+body.monitor-terminal .decision-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 18px;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+body.monitor-terminal .decision-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    max-height: 612px;
+    overflow: auto;
+}
+
+body.monitor-terminal .decision-item {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid transparent;
+    border-left: 4px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-primary);
+    text-align: left;
+    transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+body.monitor-terminal .decision-item:hover {
+    border-color: var(--border-soft);
+    background: rgba(255, 255, 255, 0.018);
+}
+
+body.monitor-terminal .decision-item.is-active {
+    border-color: rgba(145, 182, 255, 0.22);
+    border-left-color: var(--accent-cyan);
+    background: rgba(145, 182, 255, 0.06);
+}
+
+body.monitor-terminal .decision-item-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body.monitor-terminal .decision-item-symbol {
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+body.monitor-terminal .decision-item-signal,
+body.monitor-terminal .decision-item-time {
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+}
+
+body.monitor-terminal .decision-item-summary {
+    margin-top: 8px;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.6;
+}
+
+body.monitor-terminal .decision-stage-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+}
+
+body.monitor-terminal .decision-stage-chip,
+body.monitor-terminal .decision-pill,
+body.monitor-terminal .decision-signal {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+}
+
+body.monitor-terminal .decision-focus {
+    padding: 22px;
+}
+
+body.monitor-terminal .decision-empty {
+    min-height: 100%;
+    border: 1px dashed var(--border-soft);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.015);
+    color: var(--text-dim);
+}
+
+body.monitor-terminal .decision-focus-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+body.monitor-terminal .decision-focus-title h4 {
+    margin: 6px 0 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+body.monitor-terminal .decision-kicker {
+    color: var(--text-dim);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.74rem;
+    letter-spacing: 0.05em;
+}
+
+body.monitor-terminal .decision-trace-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+body.monitor-terminal .decision-summary {
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+body.monitor-terminal .decision-stage-list {
+    display: grid;
+    gap: 12px;
+}
+body.monitor-terminal .decision-stage {
+    display: grid;
+    grid-template-columns: 130px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    padding-top: 12px;
+    border-top: 1px solid rgba(132, 145, 163, 0.12);
+}
+
+body.monitor-terminal .decision-stage:first-child {
+    padding-top: 0;
+    border-top: none;
+}
+
+body.monitor-terminal .decision-stage-name {
+    padding-top: 4px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+body.monitor-terminal .decision-stage-body {
+    padding: 14px 16px;
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+body.monitor-terminal .decision-stage-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+body.monitor-terminal .stage-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+    font-size: 0.72rem;
+}
+
+body.monitor-terminal .stage-status-ok {
+    color: #ccead3;
+    border-color: rgba(116, 185, 130, 0.3);
+    background: rgba(116, 185, 130, 0.08);
+}
+
+body.monitor-terminal .stage-status-rejected {
+    color: #f2c2bb;
+    border-color: rgba(222, 119, 102, 0.3);
+    background: rgba(222, 119, 102, 0.08);
+}
+
+body.monitor-terminal .stage-status-skipped {
+    color: #d3dbe5;
+    border-color: rgba(132, 145, 163, 0.24);
+    background: rgba(132, 145, 163, 0.08);
+}
+
+body.monitor-terminal .decision-stage-body p {
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+body.monitor-terminal .decision-stage-payload {
+    margin: 12px 0 0;
+    padding: 12px;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid rgba(132, 145, 163, 0.12);
+    border-radius: 12px;
+    background: #0a1017;
+    color: #d9e3ee;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    line-height: 1.6;
+}
+
+body.monitor-terminal .decision-timeline::-webkit-scrollbar,
+body.monitor-terminal .decision-stage-payload::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+body.monitor-terminal .decision-timeline::-webkit-scrollbar-thumb,
+body.monitor-terminal .decision-stage-payload::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(132, 145, 163, 0.22);
+    background-clip: padding-box;
+}
+
+@media (max-width: 1500px) {
+    body.monitor-terminal .overview-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    body.monitor-terminal .decision-grid {
+        grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    body.monitor-terminal .hero-panel {
+        grid-template-columns: 1fr;
+    }
+
+    body.monitor-terminal .hero-controls {
+        padding-left: 0;
+        border-left: none;
+        border-top: 1px solid var(--border-soft);
+        padding-top: 18px;
+    }
+
+    body.monitor-terminal .decision-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.monitor-terminal .decision-stack,
+    body.monitor-terminal .decision-focus {
+        min-height: auto;
+    }
+}
+
+@media (max-width: 900px) {
+    body.monitor-terminal .dashboard-shell {
+        padding: 18px 14px 28px;
+    }
+
+    body.monitor-terminal .hero-panel {
+        padding: 20px;
+        margin-bottom: 18px;
+    }
+
+    body.monitor-terminal .hero-title-row,
+    body.monitor-terminal .hero-meta,
+    body.monitor-terminal .control-actions,
+    body.monitor-terminal .surface-head,
+    body.monitor-terminal .decision-toolbar,
+    body.monitor-terminal .decision-focus-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    body.monitor-terminal .overview-grid,
+    body.monitor-terminal .control-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    body.monitor-terminal #chart-container {
+        height: 560px;
+    }
+
+    body.monitor-terminal .decision-stage {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    body.monitor-terminal .overview-grid,
+    body.monitor-terminal .control-grid {
+        grid-template-columns: 1fr;
+    }
+
+    body.monitor-terminal .surface-head,
+    body.monitor-terminal .chart-shell,
+    body.monitor-terminal .table-wrap,
+    body.monitor-terminal .decision-grid,
+    body.monitor-terminal .decision-focus,
+    body.monitor-terminal .decision-toolbar {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    body.monitor-terminal #chart-container {
+        height: 460px;
+    }
+}
