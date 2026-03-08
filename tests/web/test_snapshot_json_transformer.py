@@ -486,7 +486,8 @@ class TestTransform:
         assert "rb2501.SHFE" in result["instruments"]
         assert len(result["positions"]) == 1
         assert len(result["orders"]) == 1
-        assert set(result.keys()) == {"timestamp", "variant", "instruments", "positions", "orders"}
+        assert set(result.keys()) == {"timestamp", "variant", "instruments", "positions", "orders", "recent_decisions"}
+        assert result["recent_decisions"] == []
 
     def test_missing_current_dt(self):
         """current_dt 缺失时 timestamp 为空字符串"""
@@ -534,4 +535,5 @@ class TestTransform:
             "instruments": {},
             "positions": [],
             "orders": [],
+            "recent_decisions": [],
         }

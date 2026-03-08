@@ -152,7 +152,8 @@ class TestNormalFlow:
         assert "rb2501.SHFE" in result["instruments"]
         assert len(result["positions"]) == 1
         assert len(result["orders"]) == 1
-        assert set(result.keys()) == {"timestamp", "variant", "instruments", "positions", "orders"}
+        assert set(result.keys()) == {"timestamp", "variant", "instruments", "positions", "orders", "recent_decisions"}
+        assert result["recent_decisions"] == []
 
     def test_list_strategies_normal(self):
         """正常查询策略列表"""

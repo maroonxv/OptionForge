@@ -559,7 +559,7 @@ def _valid_snapshot():
 
 
 _TIMESTAMP_PATTERN = _re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
-_EXPECTED_KEYS = {"timestamp", "variant", "instruments", "positions", "orders"}
+_EXPECTED_KEYS = {"timestamp", "variant", "instruments", "positions", "orders", "recent_decisions"}
 
 
 class TestFullSnapshotTransformProperty:
