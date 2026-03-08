@@ -171,6 +171,24 @@ class StrategyMonitor:
         except Exception:
             return
 
+    def record_decision_trace(self, payload: Dict[str, Any]) -> None:
+        """记录决策流水线轨迹。"""
+        vt_symbol = str(payload.get("vt_symbol", "") or "")
+        bar_dt = self.parse_bar_dt(payload.get("bar_dt"))
+        trace_id = str(payload.get("trace_id", "") or "")
+        signal_name = str(payload.get("signal_name", "") or "")
+        event_key = (
+            f"{self.variant_name}|{self.monitor_instance_id}|{vt_symbol}|"
+            f"{(bar_dt.isoformat() if bar_dt else '')}|decision|{trace_id}|{signal_name}"
+        )
+        self.insert_monitor_event(
+            event_type="decision_trace",
+            event_key=event_key,
+            payload=payload,
+            vt_symbol=vt_symbol,
+            bar_dt=bar_dt,
+        )
+
         try:
             self._bind_models(db)
             with db.connection_context():
@@ -317,6 +335,7 @@ class StrategyMonitor:
                 "instruments": instruments_data,
                 "positions": positions_list,
                 "orders": orders_list,
+                "recent_decisions": list(getattr(strategy_context, "decision_journal", []) or []),
             }
 
             bar_interval = str(getattr(strategy_context, "bar_interval", "") or "") or None

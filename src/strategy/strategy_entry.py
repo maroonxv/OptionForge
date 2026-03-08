@@ -29,6 +29,7 @@ from .domain.aggregate.position_aggregate import PositionAggregate
 from .domain.aggregate.target_instrument_aggregate import InstrumentManager
 from .domain.domain_service.execution.smart_order_executor import SmartOrderExecutor
 from .domain.domain_service.pricing import GreeksCalculator
+from .domain.domain_service.pricing.pricing_engine import PricingEngine
 from .domain.domain_service.risk.portfolio_risk_aggregator import PortfolioRiskAggregator
 from .domain.domain_service.risk.position_sizing_service import PositionSizingService
 from .domain.domain_service.selection.future_selection_service import FutureSelectionService
@@ -36,7 +37,9 @@ from .domain.domain_service.selection.option_selector_service import OptionSelec
 from .domain.domain_service.signal.indicator_service import IndicatorService
 from .domain.domain_service.signal.signal_service import SignalService
 from .domain.event.event_types import PositionClosedEvent
+from .domain.value_object.risk import RiskThresholds
 from .domain.value_object.selection.selection import MarketData as SelectionMarketData
+from .domain.value_object.signal.strategy_contract import DecisionTrace
 from .infrastructure.gateway.vnpy_account_gateway import VnpyAccountGateway
 from .infrastructure.gateway.vnpy_market_data_gateway import VnpyMarketDataGateway
 from .infrastructure.gateway.vnpy_trade_execution_gateway import VnpyTradeExecutionGateway
@@ -124,8 +127,16 @@ class StrategyEntry(StrategyTemplate):
         self.future_selection_service: Optional[FutureSelectionService] = None
         self.option_selector_service: Optional[OptionSelectorService] = None
         self.greeks_calculator: Optional[GreeksCalculator] = None
+        self.pricing_engine: Optional[PricingEngine] = None
         self.portfolio_risk_aggregator: Optional[PortfolioRiskAggregator] = None
         self.smart_order_executor: Optional[SmartOrderExecutor] = None
+        self.risk_thresholds: RiskThresholds = RiskThresholds()
+        self.risk_free_rate: float = 0.02
+        self.strategy_contracts: Dict[str, Any] = {}
+        self.service_activation: Dict[str, bool] = {}
+        self.observability_config: Dict[str, Any] = {}
+        self.decision_journal: List[Dict[str, Any]] = []
+        self.decision_journal_limit: int = 200
 
         # ── 基础设施网关 (在 on_init 中初始化) ──
         self.market_gateway: Optional[VnpyMarketDataGateway] = None
@@ -166,6 +177,7 @@ class StrategyEntry(StrategyTemplate):
         self.last_bars: Dict[str, BarData] = {}
         self.warming_up: bool = False
         self.current_dt: datetime = datetime.now()
+        self.last_decision_trace: Optional[DecisionTrace] = None
 
         # ── 应用层切片 ──
         self.lifecycle_workflow = LifecycleWorkflow(self)
