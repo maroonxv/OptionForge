@@ -73,6 +73,10 @@ def test_create_project_scaffold_supports_all_presets(
     assert contract["strategy_contracts"]["indicator_service"].endswith(indicator_class)
     assert contract["strategy_contracts"]["signal_service"].endswith(signal_class)
 
+    if preset == "delta-neutral":
+        config = _load_toml(plan.project_root / "config" / "strategy_config.toml")
+        assert config["service_activation"]["option_selector"] is False
+
 
 def test_create_project_scaffold_applies_capability_overrides(tmp_path: Path) -> None:
     plan = create_project_scaffold(
@@ -150,6 +154,36 @@ def test_create_project_scaffold_rejects_missing_option_dependencies(tmp_path: P
                 preset="custom",
                 include_options=(CapabilityOptionKey.VEGA_HEDGING,),
                 exclude_options=(CapabilityOptionKey.DELTA_HEDGING,),
+                no_interactive=True,
+            )
+        )
+
+
+def test_create_project_scaffold_rejects_semantic_mutex_options(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="不能同时启用"):
+        create_project_scaffold(
+            CreateOptions(
+                name="bad_mutex",
+                destination=tmp_path,
+                preset="custom",
+                include_options=(
+                    CapabilityOptionKey.GREEKS_CALCULATOR,
+                    CapabilityOptionKey.DELTA_HEDGING,
+                    CapabilityOptionKey.VEGA_HEDGING,
+                ),
+                no_interactive=True,
+            )
+        )
+
+
+def test_create_project_scaffold_rejects_preset_specific_blocked_options(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="不兼容"):
+        create_project_scaffold(
+            CreateOptions(
+                name="bad_delta_neutral",
+                destination=tmp_path,
+                preset="delta-neutral",
+                include_options=(CapabilityOptionKey.OPTION_SELECTOR,),
                 no_interactive=True,
             )
         )

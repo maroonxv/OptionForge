@@ -35,17 +35,6 @@ def test_create_help_uses_refined_copy() -> None:
     result = runner.invoke(app, ["create", "--help"])
 
     assert result.exit_code == 0
-    assert "????????????? flags ?????" in result.stdout
-    assert "?????????????? <destination>/<name>/?" in result.stdout
-    assert "?????????????????????????????" in result.stdout
-    assert "??????????????????????????" in result.stdout
-    assert "???????????????????????????????" in result.stdout
-
-
-def test_create_help_uses_refined_copy() -> None:
-    result = runner.invoke(app, ["create", "--help"])
-
-    assert result.exit_code == 0
     assert "支持交互式向导，也支持通过 flags 一次性生成" in result.stdout
     assert "项目输出父目录；最终会生成到 <destination>/<name>/。" in result.stdout
     assert "按能力组显式开启功能，可重复传入；适合非交互模式精确控制。" in result.stdout
@@ -138,6 +127,50 @@ def test_create_command_rejects_missing_nested_option_dependencies(tmp_path: Pat
 
     assert result.exit_code == 2
     assert "依赖" in result.stdout or "依赖" in result.stderr
+
+
+def test_create_command_rejects_semantic_mutex_options(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "create",
+            "bad_mutex",
+            "--destination",
+            str(tmp_path),
+            "--preset",
+            "custom",
+            "--with-option",
+            "greeks-calculator",
+            "--with-option",
+            "delta-hedging",
+            "--with-option",
+            "vega-hedging",
+            "--no-interactive",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "不能同时启用" in result.stdout or "不能同时启用" in result.stderr
+
+
+def test_create_command_rejects_delta_neutral_option_selector_combo(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "create",
+            "bad_delta_neutral",
+            "--destination",
+            str(tmp_path),
+            "--preset",
+            "delta-neutral",
+            "--with-option",
+            "option-selector",
+            "--no-interactive",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "不兼容" in result.stdout or "不兼容" in result.stderr
 
 
 def test_run_command_forwards_arguments_to_legacy_main() -> None:

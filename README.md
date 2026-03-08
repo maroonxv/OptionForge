@@ -237,6 +237,8 @@ option-scaffold create alpha_lab
 option-scaffold create alpha_lab --preset custom --with greeks-risk --with hedging --with-option vega-hedging --without-option delta-hedging --no-interactive
 ```
 
+`create` 会在生成前自动校验二级子选项之间的依赖与禁配关系，并直接拒绝语义冲突的组合。
+
 ### 浏览内置示例
 
 ```powershell

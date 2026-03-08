@@ -122,7 +122,29 @@ CAPABILITY_OPTION_DEPENDENCIES: dict[CapabilityOptionKey, tuple[CapabilityOption
     CapabilityOptionKey.VEGA_HEDGING: (CapabilityOptionKey.GREEKS_CALCULATOR,),
 }
 
-CAPABILITY_OPTION_MUTEX_RULES: tuple[tuple[CapabilityOptionKey, CapabilityOptionKey], ...] = ()
+CAPABILITY_OPTION_MUTEX_RULES: tuple[
+    tuple[tuple[CapabilityOptionKey, CapabilityOptionKey], str],
+    ...,
+] = (
+    (
+        (CapabilityOptionKey.DELTA_HEDGING, CapabilityOptionKey.VEGA_HEDGING),
+        "当前脚手架未提供 Delta/Vega 双对冲的优先级与协同编排，同时启用会造成语义冲突。",
+    ),
+    (
+        (CapabilityOptionKey.ADVANCED_ORDER_SCHEDULER, CapabilityOptionKey.DELTA_HEDGING),
+        "当前脚手架未提供调度单与 Delta 对冲单的仲裁逻辑，不能同时启用。",
+    ),
+    (
+        (CapabilityOptionKey.ADVANCED_ORDER_SCHEDULER, CapabilityOptionKey.VEGA_HEDGING),
+        "当前脚手架未提供调度单与 Vega 对冲单的仲裁逻辑，不能同时启用。",
+    ),
+)
+
+PRESET_OPTION_BLOCKLISTS: dict[str, dict[CapabilityOptionKey, str]] = {
+    "delta-neutral": {
+        CapabilityOptionKey.OPTION_SELECTOR: "`delta-neutral` 预设输出的是组合偏好，不走单腿选权链路，因此不能启用 `option-selector`。",
+    },
+}
 
 SERVICE_ACTIVATION_KEYS: tuple[str, ...] = (
     "future_selection",
@@ -199,18 +221,26 @@ def _build_example_preset(key: str, display_name: str, fallback_description: str
     readme_path = template_dir / "README.md"
     readme_text = readme_path.read_text(encoding="utf-8") if readme_path.exists() else ""
     description = _extract_summary(readme_text, fallback_description)
-    return ScaffoldPreset(
-        key=key,
-        display_name=display_name,
-        description=description,
-        template_dir=template_dir,
-        default_options=(
+    default_options = (
+        CapabilityOptionKey.FUTURE_SELECTION,
+        CapabilityOptionKey.OPTION_CHAIN,
+        CapabilityOptionKey.MONITORING,
+        CapabilityOptionKey.DECISION_OBSERVABILITY,
+    )
+    if key != "delta-neutral":
+        default_options = (
             CapabilityOptionKey.FUTURE_SELECTION,
             CapabilityOptionKey.OPTION_CHAIN,
             CapabilityOptionKey.OPTION_SELECTOR,
             CapabilityOptionKey.MONITORING,
             CapabilityOptionKey.DECISION_OBSERVABILITY,
-        ),
+        )
+    return ScaffoldPreset(
+        key=key,
+        display_name=display_name,
+        description=description,
+        template_dir=template_dir,
+        default_options=default_options,
         indicator_class_template=indicator_class,
         signal_class_template=signal_class,
         indicator_kwargs=indicator_kwargs,
@@ -269,7 +299,11 @@ def capability_option_label(option: CapabilityOptionKey) -> str:
     return CAPABILITY_OPTION_LABELS[option]
 
 
-def validate_enabled_options(enabled_options: tuple[CapabilityOptionKey, ...]) -> tuple[CapabilityOptionKey, ...]:
+def validate_enabled_options(
+    enabled_options: tuple[CapabilityOptionKey, ...],
+    *,
+    preset_key: str | None = None,
+) -> tuple[CapabilityOptionKey, ...]:
     """校验二级子选项之间的依赖与互斥关系。"""
     enabled_set = set(enabled_options)
 
@@ -283,11 +317,14 @@ def validate_enabled_options(enabled_options: tuple[CapabilityOptionKey, ...]) -
                 f"子选项 `{option.value}` 依赖 {dependency_names}，请补齐依赖后再生成。"
             )
 
-    for left, right in CAPABILITY_OPTION_MUTEX_RULES:
+    for (left, right), reason in CAPABILITY_OPTION_MUTEX_RULES:
         if left in enabled_set and right in enabled_set:
-            raise ValueError(
-                f"子选项 `{left.value}` 与 `{right.value}` 不能同时启用。"
-            )
+            raise ValueError(f"子选项 `{left.value}` 与 `{right.value}` 不能同时启用：{reason}")
+
+    preset_rules = PRESET_OPTION_BLOCKLISTS.get(preset_key or "", {})
+    for option, reason in preset_rules.items():
+        if option in enabled_set:
+            raise ValueError(f"子选项 `{option.value}` 与预设 `{preset_key}` 不兼容：{reason}")
 
     return enabled_options
 
@@ -338,7 +375,7 @@ def resolve_capability_options(
     resolved.update(include_option_set)
     resolved.difference_update(exclude_option_set)
     resolved_options = tuple(item for item in CAPABILITY_OPTION_ORDER if item in resolved)
-    return validate_enabled_options(resolved_options)
+    return validate_enabled_options(resolved_options, preset_key=preset.key)
 
 
 def build_service_activation(enabled_options: tuple[CapabilityOptionKey, ...]) -> dict[str, bool]:
