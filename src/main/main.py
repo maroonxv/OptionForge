@@ -25,18 +25,13 @@ from src.main.config.config_loader import ConfigLoader
 from src.main.utils.signal_handler import register_shutdown_signals
 
 
-def parse_args() -> argparse.Namespace:
-    """
-    解析命令行参数
-    
-    Returns:
-        解析后的参数命名空间
-    """
+def build_parser() -> argparse.ArgumentParser:
+    """构建策略运行命令解析器。"""
     parser = argparse.ArgumentParser(
         description="商品波动率策略运行入口",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    
+
     parser.add_argument(
         "--mode",
         type=str,
@@ -44,7 +39,7 @@ def parse_args() -> argparse.Namespace:
         choices=["standalone", "daemon"],
         help="运行模式: standalone(单进程) / daemon(守护进程)"
     )
-    
+
     parser.add_argument(
         "--config",
         type=str,
@@ -57,7 +52,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="覆盖配置文件路径 (可选, 用于合并时间窗口等差异化配置)"
     )
-    
+
     parser.add_argument(
         "--log-level",
         type=str,
@@ -65,14 +60,14 @@ def parse_args() -> argparse.Namespace:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="日志级别"
     )
-    
+
     parser.add_argument(
         "--log-dir",
         type=str,
         default="data/logs",
         help="日志目录"
     )
-    
+
     parser.add_argument(
         "--no-ui",
         action="store_true",
@@ -84,8 +79,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="启用模拟交易模式"
     )
+
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """
+    解析命令行参数
     
-    return parser.parse_args()
+    Returns:
+        解析后的参数命名空间
+    """
+    return build_parser().parse_args(argv)
 
 
 def run_standalone(args: argparse.Namespace) -> None:
@@ -171,9 +176,9 @@ def run_daemon(args: argparse.Namespace) -> None:
         parent.graceful_shutdown()
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     """主函数"""
-    args = parse_args()
+    args = parse_args(argv)
     
     # 确定日志文件名和目录
     log_name = "strategy.log"
@@ -206,6 +211,8 @@ def main() -> None:
     else:
         run_daemon(args)
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

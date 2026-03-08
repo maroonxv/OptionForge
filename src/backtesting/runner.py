@@ -6,6 +6,7 @@
 """
 
 import logging
+import copy
 from datetime import datetime
 from typing import Dict, List
 
@@ -34,7 +35,7 @@ class BacktestRunner:
 
         # 1. 加载策略配置
         logger.info("正在从 %s 加载配置...", self.config.config_path)
-        config = ConfigLoader.load_yaml(self.config.config_path)
+        config = ConfigLoader.load_strategy_config(self.config.config_path)
 
         if not config.get("strategies"):
             logger.error("错误: 配置中未找到策略。")
@@ -42,7 +43,9 @@ class BacktestRunner:
 
         strategy_config = config["strategies"][0]
         vt_symbols_config: List[str] = strategy_config.get("vt_symbols", [])
-        setting: Dict = strategy_config.get("setting", {})
+        setting: Dict = copy.deepcopy(strategy_config.get("setting", {}) or {})
+        setting.update(ConfigLoader.extract_shared_strategy_settings(config))
+        setting["strategy_full_config"] = copy.deepcopy(config)
 
         # 2. 获取品种列表
         target_products: List[str] = vt_symbols_config

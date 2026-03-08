@@ -10,6 +10,7 @@ child_process.py - 工作进程实现
 """
 import os
 import sys
+import copy
 import time
 import logging
 import argparse
@@ -179,20 +180,19 @@ class ChildProcess:
             if not strategy_config_path.exists():
                 raise FileNotFoundError(f"策略配置文件不存在: {strategy_config_path}")
 
-            base_config = ConfigLoader.load_toml(str(strategy_config_path))
-            
-            # 如果有覆盖配置，进行合并
             if self.override_config_path:
                 override_path = Path(self.override_config_path)
                 if override_path.exists():
-                    override_config = ConfigLoader.load_toml(str(override_path))
-                    self.strategy_config = ConfigLoader.merge_strategy_config(base_config, override_config)
+                    self.strategy_config = ConfigLoader.load_strategy_config(
+                        str(strategy_config_path),
+                        str(override_path),
+                    )
                     self.logger.info(f"已加载策略配置: {strategy_config_path} + {self.override_config_path}")
                 else:
                     self.logger.warning(f"覆盖配置文件不存在: {self.override_config_path}, 将只使用基础配置")
-                    self.strategy_config = base_config
+                    self.strategy_config = ConfigLoader.load_strategy_config(str(strategy_config_path))
             else:
-                self.strategy_config = base_config
+                self.strategy_config = ConfigLoader.load_strategy_config(str(strategy_config_path))
                 self.logger.info(f"已加载策略配置: {strategy_config_path}")
 
         except Exception as e:
@@ -269,13 +269,16 @@ class ChildProcess:
         self.logger.info("加载策略...")
         
         strategies = self.strategy_config.get("strategies", [])
+        shared_setting = ConfigLoader.extract_shared_strategy_settings(self.strategy_config)
         
         for strategy_setting in strategies:
             class_name = strategy_setting.get("class_name")
             # 如果未配置策略名称，使用默认值
             strategy_name = strategy_setting.get("strategy_name", "default_strategy")
             vt_symbols = strategy_setting.get("vt_symbols", [])
-            setting = strategy_setting.get("setting", {})
+            setting = copy.deepcopy(strategy_setting.get("setting", {}) or {})
+            setting.update(copy.deepcopy(shared_setting))
+            setting["strategy_full_config"] = copy.deepcopy(self.strategy_config)
             
             # 如果是模拟交易模式，注入 paper_trading 配置
             if self.paper_trading:

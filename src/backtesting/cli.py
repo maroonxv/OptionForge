@@ -6,12 +6,10 @@
 """
 
 import argparse
-import sys
-from pathlib import Path
 
 
-def main() -> None:
-    """CLI 入口：解析参数 → 构建配置 → 初始化数据库 → 运行回测。"""
+def build_parser() -> argparse.ArgumentParser:
+    """构建回测命令行解析器。"""
     parser = argparse.ArgumentParser(description="运行组合策略回测")
     parser.add_argument("--config", type=str, default=None, help="策略配置文件路径")
     parser.add_argument("--start", type=str, default=None, help="开始日期 (YYYY-MM-DD)")
@@ -25,8 +23,17 @@ def main() -> None:
         "--no-chart", action="store_true", default=None, dest="no_chart",
         help="不显示图表",
     )
+    return parser
 
-    args = parser.parse_args()
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """解析回测命令参数。"""
+    return build_parser().parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI 入口：解析参数 → 构建配置 → 初始化数据库 → 运行回测。"""
+    args = parse_args(argv)
 
     # 1. 构建回测配置（CLI 参数非 None 时覆盖默认值）
     from src.backtesting.config import BacktestConfig
@@ -49,6 +56,8 @@ def main() -> None:
     runner = BacktestRunner(config)
     runner.run()
 
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

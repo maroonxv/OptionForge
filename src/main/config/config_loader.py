@@ -8,6 +8,8 @@ config_loader.py - 配置加载器
 """
 import os
 import sys
+import copy
+import importlib
 from pathlib import Path
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
@@ -39,6 +41,86 @@ class ConfigLoader:
         import yaml
         with open(path, "r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
+    @staticmethod
+    def import_from_string(path: str) -> Any:
+        """从 ``module:attr`` 或 ``module.attr`` 字符串动态导入对象。"""
+        raw = str(path or "").strip()
+        if not raw:
+            raise ValueError("导入路径不能为空")
+
+        module_path = ""
+        attr_name = ""
+        if ":" in raw:
+            module_path, attr_name = raw.split(":", 1)
+        else:
+            module_path, _, attr_name = raw.rpartition(".")
+
+        if not module_path or not attr_name:
+            raise ValueError(f"无效导入路径: {raw}")
+
+        module = importlib.import_module(module_path)
+        return getattr(module, attr_name)
+
+    @staticmethod
+    def _deep_merge_dict(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+        """递归合并字典，优先使用 override。"""
+        result = copy.deepcopy(base)
+        for key, value in (override or {}).items():
+            if isinstance(value, dict) and isinstance(result.get(key), dict):
+                result[key] = ConfigLoader._deep_merge_dict(result[key], value)
+            else:
+                result[key] = copy.deepcopy(value)
+        return result
+
+    @staticmethod
+    def load_strategy_config(
+        path: str,
+        override_path: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """加载并合并 TOML 策略配置。"""
+        config = ConfigLoader.load_toml(path)
+        if override_path and Path(override_path).exists():
+            override_config = ConfigLoader.load_toml(override_path)
+            return ConfigLoader.merge_strategy_config(config, override_config)
+        return config
+
+    @staticmethod
+    def extract_shared_strategy_settings(config: Dict[str, Any]) -> Dict[str, Any]:
+        """提取需要注入到 strategy setting 的共享配置。"""
+        result: Dict[str, Any] = {}
+        for key in ("strategy_contracts", "service_activation", "observability"):
+            value = config.get(key)
+            if isinstance(value, dict):
+                result[key] = copy.deepcopy(value)
+        return result
+
+    @staticmethod
+    def resolve_service_activation(config: Dict[str, Any]) -> Dict[str, bool]:
+        """解析领域服务按需装配开关。"""
+        defaults = {
+            "future_selection": True,
+            "option_chain": True,
+            "option_selector": True,
+            "position_sizing": False,
+            "pricing_engine": False,
+            "greeks_calculator": False,
+            "portfolio_risk": False,
+            "smart_order_executor": False,
+            "advanced_order_scheduler": False,
+            "delta_hedging": False,
+            "vega_hedging": False,
+            "monitoring": True,
+            "decision_observability": True,
+        }
+        raw = config.get("service_activation")
+        if not isinstance(raw, dict):
+            return defaults
+
+        resolved = dict(defaults)
+        for key, value in raw.items():
+            resolved[str(key)] = bool(value)
+        return resolved
     
     @staticmethod
     def load_gateway_config() -> Dict[str, Any]:
@@ -205,24 +287,24 @@ class ConfigLoader:
         if not isinstance(override_config, dict):
             return base_config
 
-        merged: Dict[str, Any] = {
-            **base_config,
-            "strategies": [
-                {
-                    **(strategy or {}),
-                    "setting": dict((strategy or {}).get("setting") or {}),
-                }
-                for strategy in (base_config.get("strategies") or [])
-                if isinstance(strategy, dict)
-            ],
-        }
-
-        runtime_override = override_config.get("runtime")
-        if isinstance(runtime_override, dict):
-            base_runtime = merged.get("runtime")
-            if not isinstance(base_runtime, dict):
-                base_runtime = {}
-            merged["runtime"] = {**base_runtime, **runtime_override}
+        merged: Dict[str, Any] = ConfigLoader._deep_merge_dict(
+            {
+                **base_config,
+                "strategies": [
+                    {
+                        **(strategy or {}),
+                        "setting": dict((strategy or {}).get("setting") or {}),
+                    }
+                    for strategy in (base_config.get("strategies") or [])
+                    if isinstance(strategy, dict)
+                ],
+            },
+            {
+                key: value
+                for key, value in override_config.items()
+                if key not in {"strategies", "timeframe"}
+            },
+        )
 
         timeframe_cfg = override_config.get("timeframe")
         if isinstance(timeframe_cfg, dict):
