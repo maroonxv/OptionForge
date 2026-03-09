@@ -63,7 +63,7 @@ def _prompt_main_menu_choice() -> int:
 
 def _run_main_menu_action(choice: int) -> None:
     if choice == 1:
-        create_click(
+        create_command(
             name=None,
             destination=Path("."),
             preset=None,
@@ -71,18 +71,18 @@ def _run_main_menu_action(choice: int) -> None:
             without=(),
             with_option=(),
             without_option=(),
-            force=False,
-            clear=False,
-            overwrite=False,
-            use_default=False,
-            no_interactive=False,
+            force="",
+            clear="",
+            overwrite="",
+            use_default="",
+            no_interactive="",
         )
         return
     if choice == 2:
-        examples_click(name=None)
+        examples_command(name=None)
         return
     if choice == 3:
-        doctor_click(strict=False, check_db=False)
+        doctor_command(strict="", check_db="")
         return
 
 

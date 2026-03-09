@@ -65,15 +65,34 @@ def test_root_command_without_args_uses_create_as_default_menu_action(monkeypatc
     monkeypatch.setattr(app_module, "_supports_main_menu", lambda: True)
     monkeypatch.setattr(click, "prompt", lambda *_args, **_kwargs: 1)
 
-    def fake_create_click(**_: object) -> None:
+    def fake_create_command(**_: object) -> None:
         called["create"] = True
 
-    monkeypatch.setattr(app_module, "create_click", fake_create_click)
+    monkeypatch.setattr(app_module, "create_command", fake_create_command)
 
     result = runner.invoke(app, [])
 
     assert result.exit_code == 0
     assert called["create"] is True
+
+
+def test_run_main_menu_action_routes_examples_and_doctor_to_underlying_commands(monkeypatch) -> None:
+    called = {"examples": None, "doctor": None}
+
+    def fake_examples_command(**kwargs: object) -> None:
+        called["examples"] = kwargs
+
+    def fake_doctor_command(**kwargs: object) -> None:
+        called["doctor"] = kwargs
+
+    monkeypatch.setattr(app_module, "examples_command", fake_examples_command)
+    monkeypatch.setattr(app_module, "doctor_command", fake_doctor_command)
+
+    app_module._run_main_menu_action(2)
+    app_module._run_main_menu_action(3)
+
+    assert called["examples"] == {"name": None}
+    assert called["doctor"] == {"strict": "", "check_db": ""}
 
 
 def test_create_help_uses_refined_copy() -> None:
