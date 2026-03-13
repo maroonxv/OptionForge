@@ -5,6 +5,7 @@
 
 <p><strong>面向 Coding Agent 的期权交易策略研发脚手架。</strong></p>
 <p>基于 <code>vn.py</code>、<code>PostgreSQL</code>、<code>Flask</code> 与 <code>Docker</code> 预置领域建模、运行支撑与部署底座，并内建面向 Agent 的上下文协议、编辑边界与验证回路，让你更顺手地通过 agentic coding 持续迭代期权交易策略。</p>
+<p><a href="./README_EN.md">英文版</a></p>
 
 </div>
 <!-- readme-gen:end:hero -->
@@ -41,68 +42,193 @@
 
 仓库把策略意图、机器可读上下文、可编辑范围和验证产物显式化，方便 Agent 更稳定地理解任务、生成改动并回传可核对的结果。
 
-## Agent-First 工作流
+## Agent 优先工作流
 
 这个仓库把 Coding Agent 视为一等公民：`forge` 用来生成或刷新协作资产，`strategy_spec.toml` 用来描述策略意图，结构化命令输出则负责把验证与运行结果稳定地交给 Agent 消费。
 
 从源码目录运行时，统一使用 `python -m src.cli.app ...`；如果已经安装到当前环境，也可以使用等价简写 `option-scaffold ...`。
 
-> [!TIP]
-> 如果你计划让 Agent 持续参与需求拆解、编码、验证和回测，这套工作流已经把“读什么、改哪里、如何验收”预先约定好。
-
-1. 需要创建或刷新 AGENT 协作资产时，先运行 `python -m src.cli.app forge --json`。
-2. 阅读 `strategy_spec.toml`，理解当前策略目标与高层意图。
-3. 阅读 `.focus/context.json`，获取当前机器可读上下文契约。
-4. 将 `.focus/*.md` 视为面向人的导航补充，而不是唯一事实来源。
-5. 仅在当前 editable surface 允许的范围内修改文件。
-6. 使用 `python -m src.cli.app validate --json` 和 `python -m src.cli.app focus test --json` 完成验证。
-7. 只有在任务确实需要运行证据或运行时行为时，再使用 `python -m src.cli.app backtest --json` 或 `python -m src.cli.app run --json`。
 
 机器可读的 AGENT 资产：
 
 - `AGENTS_FOCUS.md`：AGENT 操作手册
 - `strategy_spec.toml`：面向 AGENT 的策略意图说明
 - `.focus/context.json`：当前机器可读上下文契约
-- `focus/strategies/*/strategy.manifest.toml`：生成出的 focus manifest
-- `focus/packs/*/pack.toml`：pack 归属、测试与 AGENT 备注
-- `tests/TEST.md`：测试计划与最近一次验收摘要
+- `focus/strategies/*/strategy.manifest.toml`：生成出的策略焦点清单
+- `focus/packs/*/pack.toml`：Pack 归属、测试与 AGENT 备注
+- `tests/TEST.md`：由 `forge` 生成的测试计划与最近一次验收摘要
 - `artifacts/validate/latest.json` / `artifacts/backtest/latest.json`：最近一次结构化命令输出
 
-<!-- readme-gen:start:highlights -->
-## 工程亮点
 
-| 维度 | 已内置内容 | 对开发的价值 |
-| --- | --- | --- |
-| 分层架构 | `application / domain / infrastructure` | 把策略编排、交易规则、外部依赖隔离开，便于持续演进 |
-| 领域能力 | `selection / risk / execution / pricing / signal / hedging / combination` | 可以直接替换或扩展具体策略服务 |
-| Agent 友好工作流 | `strategy_spec + forge + .focus/context.json + artifacts + --json` | 为 Coding Agent 提供稳定的上下文协议、编辑边界与验证闭环，人机协作更顺畅 |
-| 工程配套 | `config/*.toml`、Docker Compose、Web 监控页 | 让参数管理、部署与观测有统一入口 |
-| 质量保障 | `pytest` 测试骨架，当前仓库中已有 `113` 个 `test_*.py` 测试文件 | 做重构和新增策略时更有安全感 |
-
-### 工程快照
-
-- 运行时：默认 Docker 镜像基于 `Python 3.12`
-- Web 监控：`Flask + Socket.IO`，默认端口 `5007`
-- 默认部署：`runner + monitor + PostgreSQL`
-- Agent 协作：推荐从 `python -m src.cli.app forge --json` 进入，再结合 `.focus/context.json` 与 `artifacts/*.json` 进行结构化协作
-- 文档资产：`doc/` 下包含架构、开发说明与用户手册
-<!-- readme-gen:end:highlights -->
 
 <!-- readme-gen:start:architecture -->
 ## 架构概览
 
+这个脚手架不是单一策略脚本，而是围绕“运行入口、策略核心、回测子系统、监控页面、部署底座、Agent 协作资产”组织的一套工程骨架。它的目标是让你既能快速替换具体策略逻辑，也能让人和 Agent 都清楚地知道系统从哪里进入、数据如何流动、应该改哪些文件、又该如何验证结果。
+
+### 1. 系统总览
+
 ```mermaid
-flowchart LR
-    A["vn.py 事件 / 行情回调"] --> B["StrategyEntry"]
-    B --> C["Application Workflows"]
-    C --> D["Domain Services"]
-    D --> E["Infrastructure Gateway / Persistence / Monitoring"]
-    E --> F["数据库 / 日志 / 订阅 / 报告"]
-    C --> G["Backtesting Runner"]
-    E --> H["Web Monitor (Flask + Socket.IO)"]
+flowchart TB
+    Agent["开发者 / Coding Agent"]
+
+    subgraph Entry["入口与协作层"]
+        CLI["CLI<br/>src/cli"]
+        Main["运行装配<br/>src/main"]
+        Focus["协作资产<br/>strategy_spec.toml / focus / .focus"]
+    end
+
+    subgraph Core["策略核心"]
+        App["应用工作流<br/>src/strategy/application"]
+        Domain["领域模型与领域服务<br/>src/strategy/domain"]
+        Infra["基础设施适配层<br/>src/strategy/infrastructure"]
+    end
+
+    subgraph Support["配套子系统"]
+        Backtest["回测子系统<br/>src/backtesting"]
+        Web["监控页面<br/>src/web"]
+        Deploy["部署底座<br/>deploy/"]
+    end
+
+    VNPY["vn.py / Gateway / Event Engine"]
+    Data["PostgreSQL / 状态快照 / 日志"]
+
+    Agent --> CLI
+    Agent --> Focus
+    CLI --> Main
+    Main --> App
+    App --> Domain
+    Domain --> Infra
+    Infra --> VNPY
+    Infra --> Data
+    Backtest --> App
+    Backtest --> Domain
+    Web --> Data
+    Deploy --> Main
+    Deploy --> Web
+    Deploy --> Data
+    Focus -.约束可编辑范围与验证路径.-> Agent
 ```
 
-这套结构的核心思路是：让上层流程编排直接连接领域服务与基础设施，把策略变化更高频的部分留在领域层，把数据库、监控、订阅与日志等能力留在基础设施层。这样更方便你按策略需求快速替换单个模块。
+### 2. 策略核心分层
+
+```mermaid
+flowchart LR
+    subgraph Application["应用层"]
+        EventBridge["event_bridge.py"]
+        MarketWorkflow["market_workflow.py"]
+        LifecycleWorkflow["lifecycle_workflow.py"]
+        StateWorkflow["state_workflow.py"]
+        SubscriptionWorkflow["subscription_workflow.py"]
+    end
+
+    subgraph Domain["领域层"]
+        Model["aggregate / entity / value_object / event"]
+        subgraph Services["domain_service"]
+            Selection["selection"]
+            Signal["signal"]
+            Pricing["pricing"]
+            Risk["risk"]
+            Execution["execution"]
+            Hedging["hedging"]
+            Combination["combination"]
+        end
+    end
+
+    subgraph Infrastructure["基础设施层"]
+        Gateway["gateway/*"]
+        BarPipeline["bar_pipeline"]
+        Persistence["persistence"]
+        Monitoring["monitoring"]
+        Parsing["parsing"]
+        Logging["logging"]
+    end
+
+    EventBridge --> MarketWorkflow
+    EventBridge --> StateWorkflow
+    LifecycleWorkflow --> MarketWorkflow
+    MarketWorkflow --> Selection
+    MarketWorkflow --> Signal
+    MarketWorkflow --> Pricing
+    MarketWorkflow --> Risk
+    MarketWorkflow --> Execution
+    MarketWorkflow --> Hedging
+    MarketWorkflow --> Combination
+    Selection --> Model
+    Signal --> Model
+    Pricing --> Model
+    Risk --> Model
+    Execution --> Model
+    Hedging --> Model
+    Combination --> Model
+    Execution --> Gateway
+    SubscriptionWorkflow --> Gateway
+    MarketWorkflow --> BarPipeline
+    StateWorkflow --> Persistence
+    MarketWorkflow --> Monitoring
+    Gateway --> Parsing
+    Persistence --> Logging
+```
+
+这里采用的是比较直接的分层方式：应用层负责流程编排，领域层承载高频变化的交易规则，基础设施层处理网关、持久化、监控和解析。上层工作流直接调用具体领域服务与基础设施，而不是再额外包一层 `facade` 或 `coordinator`，这样策略演进时边界更清晰，Agent 也更容易定位该改动的真实落点。
+
+### 3. 运行时事件链路
+
+```mermaid
+sequenceDiagram
+    participant Market as "vn.py 事件引擎"
+    participant Entry as "StrategyEntry"
+    participant Workflow as "应用工作流"
+    participant Domain as "领域服务"
+    participant Infra as "基础设施层"
+    participant DB as "PostgreSQL / State"
+    participant Monitor as "Flask Monitor"
+
+    Market->>Entry: Tick / Bar / Order / Trade / Timer
+    Entry->>Workflow: 分发事件
+    Workflow->>Domain: 选合约 / 信号 / 定价 / 风控 / 执行 / 对冲
+    Domain->>Infra: 下单、订阅、持久化、监控记录
+    Infra->>DB: 保存状态、快照、日志
+    Infra-->>Monitor: 提供只读监控数据
+    Domain-->>Workflow: 返回指令与状态变化
+    Workflow-->>Entry: 更新策略状态
+```
+
+这条链路体现了一个关键设计点：无论是真实运行还是回测，核心策略逻辑都尽量复用同一套应用工作流与领域服务，只是在事件来源和执行环境上切换。这样你新增信号、改风控或接入新的执行逻辑时，不需要重写整条链路。
+
+### 4. Agent 协作闭环
+
+```mermaid
+flowchart LR
+    Agent["开发者 / Coding Agent"]
+    Spec["strategy_spec.toml"]
+    Forge["forge --json"]
+    Focus[".focus/context.json<br/>SYSTEM_MAP / TASK_BRIEF / TEST_MATRIX"]
+    Edit["可编辑表面<br/>src/strategy + config + tests"]
+    Verify["validate / focus test / backtest --json"]
+    Artifacts["artifacts/*.json"]
+
+    Agent --> Spec
+    Agent --> Forge
+    Spec --> Forge
+    Forge --> Focus
+    Focus --> Edit
+    Edit --> Verify
+    Verify --> Artifacts
+    Artifacts --> Agent
+```
+
+这部分是本项目与普通策略模板最不一样的地方：除了代码本身，仓库还显式维护了策略意图、机器可读上下文、可编辑表面和结构化验证产物。对人来说，这让协作路径更清楚；对 Agent 来说，这意味着它能更稳定地理解需求、控制改动范围并输出可核对的结果。
+
+### 5. 设计取向
+
+| 设计取向 | 在仓库中的落地方式 |
+| --- | --- |
+| 分层解耦 | `application / domain / infrastructure` 明确拆开流程、规则和外部依赖 |
+| 高变更逻辑聚焦领域层 | `selection / signal / pricing / risk / execution / hedging / combination` 集中承载策略差异 |
+| 工作流直连真实服务 | 应用层直接编排具体领域服务与基础设施，不再额外叠加 `facade` / `coordinator` |
+| 运行与回测复用核心逻辑 | `src/backtesting` 复用策略核心，只替换数据来源与执行场景 |
+| Agent 友好 | `strategy_spec.toml`、`.focus/context.json`、`artifacts/*.json` 共同提供上下文、边界与验收闭环 |
 <!-- readme-gen:end:architecture -->
 
 <!-- readme-gen:start:quick-start -->
@@ -165,7 +291,7 @@ pip install -e .
 Copy-Item .env.example .env
 ```
 
-3. Inspect the CLI and refresh AGENT assets:
+3. 查看 CLI 并刷新 AGENT 协作资产：
 
 ```powershell
 python -m src.cli.app --help
@@ -174,7 +300,7 @@ python -m src.cli.app forge --json
 python -m src.cli.app focus show --json
 ```
 
-4. Validate the current workspace through structured output:
+4. 通过结构化输出校验当前工作区：
 
 ```powershell
 python -m src.cli.app doctor --json
@@ -188,7 +314,7 @@ python -m src.cli.app focus test --json
 python -m src.cli.app run --mode standalone --config config/strategy_config.toml --paper
 ```
 
-7. 如需单独启动监控页面：
+6. 如需单独启动监控页面：
 
 ```powershell
 python src/web/app.py
@@ -224,25 +350,25 @@ python src/web/app.py
 pytest -c config/pytest.ini
 ```
 
-### Refresh AGENT assets
+### 刷新 AGENT 协作资产
 
 ```powershell
 python -m src.cli.app forge --json
 ```
 
-### Inspect current AGENT context
+### 查看当前 AGENT 上下文
 
 ```powershell
 python -m src.cli.app focus show --json
 ```
 
-### Validate current strategy config
+### 校验当前策略配置
 
 ```powershell
 python -m src.cli.app validate --config config/strategy_config.toml --json
 ```
 
-### Run focus verification
+### 运行 Focus 校验
 
 ```powershell
 python -m src.cli.app focus test --json
@@ -254,7 +380,7 @@ python -m src.cli.app focus test --json
 python -m src.cli.app backtest --config config/strategy_config.toml --start 2025-01-01 --end 2025-03-01 --no-chart --json
 ```
 
-### Start runtime workflow
+### 启动运行时工作流
 
 ```powershell
 python -m src.cli.app run --mode daemon --config config/strategy_config.toml --json
@@ -294,44 +420,45 @@ python -m src.cli.app examples ema_cross_example
 <!-- readme-gen:end:commands -->
 
 <!-- readme-gen:start:tree -->
-## Repository Layout
+## 仓库结构
 
 ```text
 📦 option-strategy-scaffold
-├─ pyproject.toml               Python package metadata and CLI entrypoint
-├─ .focus/                      Current focus pointer plus generated navigation assets
-├─ config/                      Strategy, domain-service, subscription, logging, and timeframe config
-│  ├─ domain_service/           Domain-service parameters
-│  ├─ general/                  Shared runtime config
-│  ├─ logging/                  Logging config
-│  ├─ subscription/             Subscription config
-│  └─ timeframe/                Timeframe override config
-├─ deploy/                      Dockerfile, Compose, and initialization scripts
-├─ doc/                         Architecture docs, development plans, and user manuals
-├─ focus/                       Focus manifests and pack metadata
+├─ pyproject.toml               Python 包元数据与 CLI 入口
+├─ .focus/                      当前焦点指针与生成出的导航资产
+├─ config/                      策略、领域服务、订阅、日志与周期配置
+│  ├─ domain_service/           领域服务参数
+│  ├─ general/                  通用运行配置
+│  ├─ logging/                  日志配置
+│  ├─ subscription/             订阅配置
+│  └─ timeframe/                多周期覆盖配置
+├─ deploy/                      Dockerfile、Compose 与初始化脚本
+├─ doc/                         手册、规划与分享材料
+├─ focus/                       策略焦点清单与 Pack 元数据
 ├─ src/
-│  ├─ cli/                      Unified CLI entrypoint and command wrappers
-│  ├─ backtesting/              Backtest CLI and runner
-│  ├─ main/                     Main entrypoint, startup flow, and process control
-│  ├─ strategy/                 Strategy core code (application / domain / infrastructure)
-│  └─ web/                      Monitoring UI and read-only state readers
-└─ tests/                       Automated tests for backtesting, main, strategy, and web
+│  ├─ cli/                      统一 CLI 入口与命令封装
+│  ├─ backtesting/              回测 CLI 与执行器
+│  ├─ main/                     主入口、启动装配与进程控制
+│  ├─ strategy/                 策略核心代码（应用层 / 领域层 / 基础设施层）
+│  └─ web/                      监控界面与只读状态读取器
+└─ tests/                       回测、主入口、策略与 Web 的自动化测试
 ```
 <!-- readme-gen:end:tree -->
 
 <!-- readme-gen:start:docs -->
 ## 文档导航
 
-- `doc/architecture/architecture.md`：整体架构说明
-- `doc/dev/strategy_detailed_design.md`：策略实现细节
-- `doc/dev/main_entrance_detailed_design.md`：主入口与运行流程
-- `doc/dev/backtesting_detailed_design.md`：回测模块设计
-- `doc/manual/README.md`：用户文档入口
-- `doc/manual/非技术人员操作手册.md`：偏使用视角的操作手册
+- `doc/manual/cli-usage.md`：CLI 使用说明
+- `doc/plan/2026-03-08-cli-productization-plan.md`：CLI 产品化规划
+- `doc/plan/2026-03-09-python-interactive-cli-wizard-plan.md`：交互式 CLI 向导规划
+- `doc/slides/option-strategy-scaffold-internal-share.html`：项目内部分享材料
+- `.focus/SYSTEM_MAP.md`：当前系统地图
+- `.focus/TASK_BRIEF.md`：当前任务简报
+- `.focus/TEST_MATRIX.md`：当前焦点测试矩阵
 <!-- readme-gen:end:docs -->
 
 <!-- readme-gen:start:license -->
-## License
+## 许可证
 
 本项目采用 [GNU Affero General Public License v3.0](LICENSE)（`AGPL-3.0`）。如果你基于本项目继续分发或提供网络服务，请在使用前认真阅读许可证全文并自行确认合规要求。
 <!-- readme-gen:end:license -->
@@ -339,7 +466,7 @@ python -m src.cli.app examples ema_cross_example
 <!-- readme-gen:start:footer -->
 <div align="center">
 
-<sub>Built for strategy research, backtesting, monitoring and fast iteration.</sub>
+<sub>为策略研究、回测、监控与快速迭代而生。</sub>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:16A34A,55:2563EB,100:0F172A&height=120&section=footer" alt="footer" />
 
