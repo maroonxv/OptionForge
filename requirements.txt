@@ -44,7 +44,7 @@ numpy==2.4.1
 openpyxl==3.1.5
 packaging==26.0
 pandas==2.3.3
-peewee==3.19.0
+peewee==4.0.2
 platformdirs==4.5.1
 plotly==6.5.2
 pluggy==1.6.0
