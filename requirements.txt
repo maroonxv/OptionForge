@@ -35,7 +35,7 @@ jupyter_core==5.9.1
 loguru==0.7.3
 lxml==6.0.2
 MarkupSafe==3.0.3
-mini-racer==0.14.0
+mini-racer==0.14.1
 multidict==6.7.1
 narwhals==2.15.0
 nbformat==5.10.4
