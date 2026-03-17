@@ -28,13 +28,6 @@ from .runtime import StrategyRuntime
 from .domain.aggregate.combination_aggregate import CombinationAggregate
 from .domain.aggregate.position_aggregate import PositionAggregate
 from .domain.aggregate.target_instrument_aggregate import InstrumentManager
-from .domain.domain_service.execution.smart_order_executor import SmartOrderExecutor
-from .domain.domain_service.pricing import GreeksCalculator
-from .domain.domain_service.pricing.pricing_engine import PricingEngine
-from .domain.domain_service.risk.portfolio_risk_aggregator import PortfolioRiskAggregator
-from .domain.domain_service.risk.position_sizing_service import PositionSizingService
-from .domain.domain_service.selection.future_selection_service import FutureSelectionService
-from .domain.domain_service.selection.option_selector_service import OptionSelectorService
 from .domain.domain_service.signal.indicator_service import IndicatorService
 from .domain.domain_service.signal.signal_service import SignalService
 from .domain.event.event_types import PositionClosedEvent
@@ -46,7 +39,6 @@ from .infrastructure.gateway.vnpy_market_data_gateway import VnpyMarketDataGatew
 from .infrastructure.gateway.vnpy_order_gateway import VnpyOrderGateway
 from .infrastructure.gateway.vnpy_trade_execution_gateway import VnpyTradeExecutionGateway
 from .infrastructure.logging.logging_utils import setup_strategy_logger
-from .infrastructure.monitoring.strategy_monitor import StrategyMonitor
 from .infrastructure.persistence.auto_save_service import AutoSaveService
 from .infrastructure.persistence.history_data_repository import HistoryDataRepository
 from .infrastructure.persistence.json_serializer import JsonSerializer
@@ -125,18 +117,10 @@ class StrategyEntry(StrategyTemplate):
         # ── 领域服务 (在 on_init 中初始化) ──
         self.indicator_service: Optional[IndicatorService] = None
         self.signal_service: Optional[SignalService] = None
-        self.position_sizing_service: Optional[PositionSizingService] = None
-        self.future_selection_service: Optional[FutureSelectionService] = None
-        self.option_selector_service: Optional[OptionSelectorService] = None
-        self.greeks_calculator: Optional[GreeksCalculator] = None
-        self.pricing_engine: Optional[PricingEngine] = None
-        self.portfolio_risk_aggregator: Optional[PortfolioRiskAggregator] = None
-        self.smart_order_executor: Optional[SmartOrderExecutor] = None
         self.risk_thresholds: RiskThresholds = RiskThresholds()
         self.risk_free_rate: float = 0.02
         self.strategy_contracts: Dict[str, Any] = {}
         self.runtime: Optional[StrategyRuntime] = None
-        self.service_activation: Dict[str, bool] = {}
         self.observability_config: Dict[str, Any] = {}
         self.decision_journal: List[Dict[str, Any]] = []
         self.decision_journal_limit: int = 200
@@ -148,7 +132,6 @@ class StrategyEntry(StrategyTemplate):
         self.exec_gateway: Optional[VnpyTradeExecutionGateway] = None
 
         # ── 基础设施: 监控与持久化 (在 on_init 中初始化) ──
-        self.monitor: Optional[StrategyMonitor] = None
         self.state_repository: Optional[StateRepository] = None
         self.auto_save_service: Optional[AutoSaveService] = None
         self.json_serializer: Optional[JsonSerializer] = None

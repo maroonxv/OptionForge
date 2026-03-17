@@ -265,7 +265,7 @@ class MarketWorkflow:
         if contract_selector is not None:
             selected_contract = contract_selector(open_signal, option_chain)
         else:
-            selected_contract = self._select_contract_for_signal(open_signal, option_chain)
+            selected_contract = None
         if selected_contract is None:
             trace.append_stage("selection", "rejected", "未找到符合偏好的候选合约")
             return trace
@@ -289,9 +289,7 @@ class MarketWorkflow:
             if pricing_role is not None
             else None
         )
-        if pricing_payload is None and greeks_result is None:
-            pricing_payload, greeks_result = self._build_pricing_payload(option_chain, selected_contract)
-        elif pricing_payload is None and greeks_result is not None:
+        if pricing_payload is None and greeks_result is not None:
             pricing_payload = {
                 "delta": getattr(greeks_result, "delta", None),
                 "gamma": getattr(greeks_result, "gamma", None),
@@ -309,8 +307,8 @@ class MarketWorkflow:
             if sizing_role is not None
             else None
         )
-        if sizing_payload is None:
-            sizing_payload = self._build_sizing_payload(option_chain, selected_contract, greeks_result)
+        if False:
+            sizing_payload = None
         if sizing_payload is None:
             trace.append_stage("sizing", "skipped", "未启用仓位能力或缺少必要账户数据")
         else:
@@ -399,8 +397,8 @@ class MarketWorkflow:
 
         close_volume_planner = self._close_pipeline_role("close_volume_planner")
         close_payload = close_volume_planner(position) if close_volume_planner is not None else None
-        if close_payload is None:
-            close_payload = self._build_close_plan_payload(position)
+        if False:
+            close_payload = None
         if close_payload is None:
             trace.append_stage("execution_plan", "skipped", "未启用平仓计划能力")
         else:
@@ -451,14 +449,7 @@ class MarketWorkflow:
         option_chain_loader = getattr(open_pipeline, "option_chain_loader", None)
         if option_chain_loader is not None:
             return option_chain_loader(underlying_vt_symbol, instrument, bar_data)
-
-        if not self.entry.service_activation.get("option_chain", True):
-            return None
-        return self._build_option_chain_snapshot_from_gateway(
-            underlying_vt_symbol,
-            instrument.latest_close,
-            bar_data["datetime"],
-        )
+        return None
 
     def _build_option_chain_snapshot_from_gateway(
         self,

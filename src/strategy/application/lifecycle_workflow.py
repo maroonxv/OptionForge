@@ -12,15 +12,6 @@ from vnpy_portfoliostrategy import StrategyTemplate
 from ..domain.aggregate.combination_aggregate import CombinationAggregate
 from ..domain.aggregate.position_aggregate import PositionAggregate
 from ..domain.aggregate.target_instrument_aggregate import InstrumentManager
-from ..domain.domain_service.pricing import GreeksCalculator
-from ..domain.domain_service.pricing.pricing_engine import PricingEngine
-from ..domain.domain_service.risk.portfolio_risk_aggregator import PortfolioRiskAggregator
-from ..domain.domain_service.risk.position_sizing_service import PositionSizingService
-from ..domain.domain_service.selection.future_selection_service import FutureSelectionService
-from ..domain.domain_service.selection.option_selector_service import OptionSelectorService
-from ..domain.domain_service.signal.indicator_service import IndicatorService
-from ..domain.domain_service.signal.signal_service import SignalService
-from ..domain.domain_service.execution.smart_order_executor import SmartOrderExecutor
 from ..domain.event.event_types import EVENT_STRATEGY_ALERT
 from ..domain.value_object.order_execution import OrderExecutionConfig
 from ..domain.value_object.risk import RiskThresholds
@@ -29,7 +20,6 @@ from ..infrastructure.gateway.vnpy_account_gateway import VnpyAccountGateway
 from ..infrastructure.gateway.vnpy_market_data_gateway import VnpyMarketDataGateway
 from ..infrastructure.gateway.vnpy_order_gateway import VnpyOrderGateway
 from ..infrastructure.gateway.vnpy_trade_execution_gateway import VnpyTradeExecutionGateway
-from ..infrastructure.monitoring.strategy_monitor import StrategyMonitor
 from ..infrastructure.persistence.auto_save_service import AutoSaveService
 from ..infrastructure.persistence.exceptions import CorruptionError
 from ..infrastructure.persistence.json_serializer import JsonSerializer
@@ -120,23 +110,45 @@ class LifecycleWorkflow:
             load_option_selector_config,
         )
 
+        position_sizing_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.risk.position_sizing_service:PositionSizingService"
+        )
+        future_selection_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.selection.future_selection_service:FutureSelectionService"
+        )
+        option_selector_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.selection.option_selector_service:OptionSelectorService"
+        )
+        pricing_engine_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.pricing.pricing_engine:PricingEngine"
+        )
+        greeks_calculator_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.pricing:GreeksCalculator"
+        )
+        portfolio_risk_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.risk.portfolio_risk_aggregator:PortfolioRiskAggregator"
+        )
+        smart_order_executor_cls = ConfigLoader.import_from_string(
+            "src.strategy.domain.domain_service.execution.smart_order_executor:SmartOrderExecutor"
+        )
+
         ps_cfg = full_config.get("position_sizing", {})
         ps_overrides = {**ps_cfg, "max_positions": self.entry.max_positions}
         self.entry.position_sizing_service = None
         if self.entry.service_activation.get("position_sizing"):
-            self.entry.position_sizing_service = PositionSizingService(
+            self.entry.position_sizing_service = position_sizing_cls(
                 config=load_position_sizing_config(overrides=ps_overrides)
             )
 
         self.entry.future_selection_service = None
         if self.entry.service_activation.get("future_selection", True):
-            self.entry.future_selection_service = FutureSelectionService(
+            self.entry.future_selection_service = future_selection_cls(
                 config=load_future_selector_config()
             )
 
         self.entry.option_selector_service = None
         if self.entry.service_activation.get("option_selector", True):
-            self.entry.option_selector_service = OptionSelectorService(
+            self.entry.option_selector_service = option_selector_cls(
                 config=load_option_selector_config(
                     overrides={"strike_level": self.entry.strike_level}
                 )
@@ -144,7 +156,7 @@ class LifecycleWorkflow:
 
         self.entry.pricing_engine = None
         if self.entry.service_activation.get("pricing_engine"):
-            self.entry.pricing_engine = PricingEngine(
+            self.entry.pricing_engine = pricing_engine_cls(
                 config=load_pricing_engine_config(
                     overrides=full_config.get("pricing_engine", {})
                 )
@@ -174,14 +186,14 @@ class LifecycleWorkflow:
             slippage_ticks=order_exec_cfg.get("slippage_ticks", 2),
         )
 
-        self.entry.greeks_calculator = GreeksCalculator() if self.entry.service_activation.get("greeks_calculator") else None
+        self.entry.greeks_calculator = greeks_calculator_cls() if self.entry.service_activation.get("greeks_calculator") else None
         self.entry.portfolio_risk_aggregator = (
-            PortfolioRiskAggregator(risk_thresholds)
+            portfolio_risk_cls(risk_thresholds)
             if self.entry.service_activation.get("portfolio_risk")
             else None
         )
         self.entry.smart_order_executor = (
-            SmartOrderExecutor(order_config)
+            smart_order_executor_cls(order_config)
             if self.entry.service_activation.get("smart_order_executor")
             else None
         )
@@ -218,7 +230,10 @@ class LifecycleWorkflow:
         }
         self.entry.monitor = None
         if self.entry.service_activation.get("monitoring", True):
-            self.entry.monitor = StrategyMonitor(
+            monitor_cls = ConfigLoader.import_from_string(
+                "src.strategy.infrastructure.monitoring.strategy_monitor:StrategyMonitor"
+            )
+            self.entry.monitor = monitor_cls(
                 variant_name=variant_name,
                 monitor_instance_id=os.getenv("MONITOR_INSTANCE_ID", "default") or "default",
                 monitor_db_config=monitor_db_config,
