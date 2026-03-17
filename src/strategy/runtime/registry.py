@@ -89,7 +89,11 @@ CAPABILITY_REGISTRY: dict[str, CapabilitySpec] = {
     "monitoring": CapabilitySpec(
         key="monitoring",
         provider_import_path="src.strategy.runtime.providers.monitoring",
-        multi_roles=("state.snapshot_sinks", "lifecycle.cleanup_hooks"),
+        multi_roles=(
+            "state.snapshot_sinks",
+            "observability.trace_sinks",
+            "lifecycle.cleanup_hooks",
+        ),
     ),
     "decision_observability": CapabilitySpec(
         key="decision_observability",

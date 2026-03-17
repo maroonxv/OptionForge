@@ -588,13 +588,14 @@ class MarketWorkflow:
 
         payload = trace.to_payload()
         self.entry.last_decision_trace = trace
-        if self.entry.service_activation.get("decision_observability", True):
-            self.entry.decision_journal.append(payload)
-            maxlen = max(int(getattr(self.entry, "decision_journal_limit", 200) or 200), 1)
-            if len(self.entry.decision_journal) > maxlen:
-                self.entry.decision_journal = self.entry.decision_journal[-maxlen:]
-            if self.entry.monitor:
-                self.entry.monitor.record_decision_trace(payload)
+        runtime = getattr(self.entry, "runtime", None)
+        observability = getattr(runtime, "observability", None)
+        trace_sinks = tuple(getattr(observability, "trace_sinks", ()) or ())
+        for sink in trace_sinks:
+            try:
+                sink(payload)
+            except Exception as e:
+                self.entry.logger.error(f"鍐崇瓥 trace 鍙戝竷澶辫触: {e}")
 
     def validate_universe(self) -> None:
         """确保每个配置品种都有可用主力合约。"""

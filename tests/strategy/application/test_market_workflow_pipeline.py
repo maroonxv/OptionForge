@@ -81,6 +81,8 @@ class _MarketGateway:
 
 
 def test_market_workflow_emits_decision_trace_for_open_pipeline() -> None:
+    captured_traces: list[dict] = []
+
     entry = SimpleNamespace()
     entry.bar_pipeline = None
     entry.target_aggregate = InstrumentManager()
@@ -105,7 +107,10 @@ def test_market_workflow_emits_decision_trace_for_open_pipeline() -> None:
     entry.position_sizing_service = None
     entry.greeks_calculator = None
     entry.pricing_engine = None
-    entry.monitor = MagicMock()
+    entry.runtime = SimpleNamespace(
+        observability=SimpleNamespace(trace_sinks=[captured_traces.append]),
+        state=SimpleNamespace(snapshot_sinks=[]),
+    )
     entry.observability_config = {"emit_noop_decisions": False}
     entry.service_activation = {"option_chain": True, "decision_observability": True}
     entry.decision_journal = []
@@ -130,6 +135,5 @@ def test_market_workflow_emits_decision_trace_for_open_pipeline() -> None:
     workflow.process_bars({"IF2506.CFFEX": bar})
 
     assert entry.last_decision_trace is not None
-    assert entry.decision_journal
-    assert any(stage["stage"] == "selection" for stage in entry.decision_journal[-1]["stages"])
-    entry.monitor.record_decision_trace.assert_called_once()
+    assert captured_traces
+    assert any(stage["stage"] == "selection" for stage in captured_traces[-1]["stages"])
