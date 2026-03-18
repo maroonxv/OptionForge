@@ -444,7 +444,7 @@ python -m src.cli.app examples ema_cross_example
 │  ├─ subscription/             订阅配置
 │  └─ timeframe/                多周期覆盖配置
 ├─ deploy/                      Dockerfile、Compose 与初始化脚本
-├─ doc/                         手册、规划与分享材料
+├─ docs/                        手册、规划与分享材料
 ├─ focus/                       策略焦点清单与 Pack 元数据
 ├─ src/
 │  ├─ cli/                      统一 CLI 入口与命令封装
@@ -459,10 +459,10 @@ python -m src.cli.app examples ema_cross_example
 <!-- readme-gen:start:docs -->
 ## 文档导航
 
-- `doc/manual/cli-usage.md`：CLI 使用说明
-- `doc/plan/2026-03-08-cli-productization-plan.md`：CLI 产品化规划
-- `doc/plan/2026-03-09-python-interactive-cli-wizard-plan.md`：交互式 CLI 向导规划
-- `doc/slides/OptionForge-internal-share.html`：项目内部分享材料
+- `docs/manual/cli-usage.md`：CLI 使用说明
+- `docs/plan/2026-03-08-cli-productization-plan.md`：CLI 产品化规划
+- `docs/plan/2026-03-09-python-interactive-cli-wizard-plan.md`：交互式 CLI 向导规划
+- `docs/slides/OptionForge-internal-share.html`：项目内部分享材料
 - `.focus/SYSTEM_MAP.md`：当前系统地图
 - `.focus/TASK_BRIEF.md`：当前任务简报
 - `.focus/TEST_MATRIX.md`：当前焦点测试矩阵

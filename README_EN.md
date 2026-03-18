@@ -427,7 +427,7 @@ python -m src.cli.app examples ema_cross_example
 │  ├─ subscription/             Subscription config
 │  └─ timeframe/                Timeframe override config
 ├─ deploy/                      Dockerfile, Compose, and initialization scripts
-├─ doc/                         Manuals, plans, and sharing materials
+├─ docs/                        Manuals, plans, and sharing materials
 ├─ focus/                       Focus manifests and pack metadata
 ├─ src/
 │  ├─ cli/                      Unified CLI entrypoint and command wrappers
@@ -440,10 +440,10 @@ python -m src.cli.app examples ema_cross_example
 
 ## Documentation
 
-- `doc/manual/cli-usage.md`: CLI usage guide
-- `doc/plan/2026-03-08-cli-productization-plan.md`: CLI productization plan
-- `doc/plan/2026-03-09-python-interactive-cli-wizard-plan.md`: interactive CLI wizard plan
-- `doc/slides/OptionForge-internal-share.html`: internal project sharing deck
+- `docs/manual/cli-usage.md`: CLI usage guide
+- `docs/plan/2026-03-08-cli-productization-plan.md`: CLI productization plan
+- `docs/plan/2026-03-09-python-interactive-cli-wizard-plan.md`: interactive CLI wizard plan
+- `docs/slides/OptionForge-internal-share.html`: internal project sharing deck
 - `.focus/SYSTEM_MAP.md`: current system map
 - `.focus/TASK_BRIEF.md`: current task brief
 - `.focus/TEST_MATRIX.md`: current focus test matrix

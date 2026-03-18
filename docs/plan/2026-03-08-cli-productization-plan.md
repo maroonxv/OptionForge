@@ -223,7 +223,7 @@ OptionForge/
 ├─ requirements.txt
 ├─ config/
 ├─ deploy/
-├─ doc/
+├─ docs/
 ├─ example/
 ├─ scripts/
 │  └─ scaffold_strategy.py
