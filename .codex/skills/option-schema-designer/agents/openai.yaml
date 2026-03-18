@@ -1,0 +1,4 @@
+interface:
+  display_name: "Option Schema Designer"
+  short_description: "为期权策略访谈持久化需求，设计范式化 schema、Chen E-R 图与 Peewee 映射"
+  default_prompt: "Use $option-schema-designer to guide option-strategy schema design for this scaffold, produce docs/design/schema documentation plus Chen E-R diagrams, and continue to Peewee mapping only after the user approves the design."
