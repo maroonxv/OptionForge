@@ -1,0 +1,19 @@
+@startuml
+title 订阅工作流 - 数据血缘图
+skinparam shadowing false
+
+rectangle "subscription_config" as Config
+rectangle "position_symbols /\npending_order_symbols" as PositionSource
+rectangle "active_contracts_by_product" as ActiveSource
+rectangle "signal_symbols" as SignalSource
+rectangle "SubscriptionRuntimeContext" as Context
+rectangle "SubscriptionDecision" as Decision
+rectangle "subscribed_symbols /\n_stale_unsubscribe_since" as RuntimeState
+
+Config --> Context
+PositionSource --> Context
+ActiveSource --> Context
+SignalSource --> Context
+Context --> Decision : resolve()
+Decision --> RuntimeState : subscribe / unsubscribe /\n清理 stale
+@enduml

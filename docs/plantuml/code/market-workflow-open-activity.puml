@@ -1,0 +1,31 @@
+@startuml
+title 行情工作流 - 开仓子流程活动图
+start
+:创建 open DecisionTrace;
+:写入 indicator stage;
+:构建 SignalContext;
+:检查 open signal;
+
+if (没有信号?) then (是)
+  :signal=noop;
+  stop
+endif
+
+:登记临时 signal symbol;
+
+if (option_chain 为空?) then (是)
+  :option_chain=skipped;
+  stop
+endif
+
+:选择合约;
+if (未选中合约?) then (是)
+  :selection=rejected;
+  stop
+endif
+
+:构建 pricing / greeks payload;
+:构建 sizing payload;
+:写入 execution_plan 骨架;
+stop
+@enduml

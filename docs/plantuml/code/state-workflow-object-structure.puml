@@ -1,0 +1,17 @@
+@startuml
+title 状态工作流 - 对象结构图
+class "snapshot dict" as Snapshot {
+  target_aggregate
+  position_aggregate
+  current_dt
+  combination_aggregate?
+}
+
+class "InstrumentManager snapshot" as Target
+class "PositionAggregate snapshot" as Position
+class "CombinationAggregate snapshot" as Combination
+
+Snapshot *-- Target
+Snapshot *-- Position
+Snapshot *-- Combination
+@enduml

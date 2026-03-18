@@ -1,27 +1,24 @@
 @startuml
-title Market Workflow - Architecture
-!pragma layout smetana
+title 行情工作流 - 架构图
 skinparam shadowing false
 skinparam componentStyle rectangle
 
-component "Tick / Bar Events" as events
-component "BarPipeline" as bar_pipeline
-component "MarketWorkflow" as workflow
-component "Target Aggregate" as target
-component "Position Aggregate" as positions
-component "Market + Account Gateways" as gateways
-component "Indicator + Signal Services" as signals
-component "Selection / Pricing /\nRisk / Sizing" as support
-component "Observability + Autosave" as observability
-component "Subscription hooks" as subscription
+component "MarketWorkflow" as Workflow
+rectangle "BarPipeline" as BarPipeline
+rectangle "InstrumentManager" as Instrument
+rectangle "PositionAggregate" as Position
+rectangle "MarketGateway /\nAccountGateway" as Gateway
+rectangle "IndicatorService /\nSignalService" as SignalServices
+rectangle "OptionSelector /\nPricing /\nGreeks /\nSizing" as DecisionServices
+rectangle "DecisionTrace /\nObservability" as Observability
+rectangle "Subscription hooks /\nAutoSave" as RuntimeHooks
 
-events --> workflow : on_tick / on_bars
-workflow --> bar_pipeline : optional aggregation
-workflow --> target : update bars / validate universe
-workflow --> positions : inspect open positions
-workflow --> gateways : contracts, quotes,\naccount snapshots
-workflow --> signals : indicator + signal stages
-workflow --> support : selection, pricing,\ngreeks, sizing, close plan
-workflow --> observability : publish traces,\nrecord snapshots, autosave
-workflow --> subscription : timer / rollover refresh
+Workflow --> BarPipeline : tick 聚合 / bar 转发
+Workflow --> Instrument : update_bar / validate_universe
+Workflow --> Position : 查持仓 / 关闭仓位
+Workflow --> Gateway : 合约、tick、账户数据
+Workflow --> SignalServices : 指标计算 / 信号判断
+Workflow --> DecisionServices : 选约 / 定价 / Greeks / 仓位
+Workflow --> Observability : 发布 trace
+Workflow --> RuntimeHooks : 订阅刷新 / autosave / 快照
 @enduml

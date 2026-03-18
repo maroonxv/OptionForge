@@ -1,18 +1,16 @@
 @startuml
-title Subscription Workflow - State
-skinparam shadowing false
-
-[*] --> Disabled
-Disabled --> Enabled : init config(enabled=true)
-Enabled --> Candidate : symbol enters target set
-Candidate --> Subscribed : subscribe(symbol)
-Subscribed --> Protected : still in target set
-Protected --> Stale : removed from target set
-Stale --> Subscribed : symbol reappears
-Stale --> Unsubscribed : TTL elapsed + unsubscribe(symbol)
-Unsubscribed --> Candidate : symbol returns
-Enabled --> TempTracked : signal-driven temporary symbol
-TempTracked --> Candidate : included in runtime context
-TempTracked --> Expired : TTL elapsed
-Expired --> [*]
+title 订阅工作流 - 状态图
+[*] --> 禁用
+禁用 --> 启用 : enabled=true
+启用 --> 候选 : symbol 进入目标集合
+候选 --> 已订阅 : subscribe(symbol)
+已订阅 --> 受保护 : 仍在目标集合
+受保护 --> 陈旧 : 脱离目标集合
+陈旧 --> 已订阅 : 再次进入目标集合
+陈旧 --> 已退订 : TTL 到期且允许退订
+已退订 --> 候选 : symbol 再次出现
+启用 --> 临时跟踪 : signal temporary symbol
+临时跟踪 --> 候选 : 汇入目标集合
+临时跟踪 --> 过期 : TTL 到期
+过期 --> [*]
 @enduml

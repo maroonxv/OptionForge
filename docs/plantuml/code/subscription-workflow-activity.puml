@@ -1,0 +1,31 @@
+@startuml
+title 订阅工作流 - 活动图
+start
+:接收 trigger;
+if (subscription_engine 或 market_gateway 缺失?) then (是)
+  stop
+endif
+
+if (trigger 不应触发重算?) then (是)
+  stop
+endif
+
+:获取 all_contracts;
+if (无合约?) then (是)
+  stop
+endif
+
+:收集 active signal / position /\npending order / active contract symbols;
+:构建 SubscriptionRuntimeContext;
+:调用 subscription_engine.resolve(context);
+
+if (decision.enabled 为 false?) then (是)
+  stop
+endif
+
+:计算 to_subscribe / stale_candidates;
+:执行 subscribe;
+:执行 stale TTL 检查与 unsubscribe;
+:清理 stale 状态;
+stop
+@enduml

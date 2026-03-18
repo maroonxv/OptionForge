@@ -1,0 +1,23 @@
+@startuml
+title 行情工作流 - 平仓子流程活动图
+start
+:创建 close DecisionTrace;
+:沿用 indicator 结果;
+:构建 close SignalContext;
+:检查 close signal;
+
+if (没有平仓信号?) then (是)
+  :signal=noop;
+  stop
+endif
+
+:生成 close signal stage;
+:构建 close plan payload;
+
+if (close plan 不可得?) then (是)
+  :execution_plan=skipped;
+else (否)
+  :execution_plan=planned;
+endif
+stop
+@enduml

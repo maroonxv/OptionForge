@@ -1,15 +1,13 @@
 @startuml
-title Lifecycle Workflow - State
-skinparam shadowing false
-
-[*] --> Constructed
-Constructed --> ConfigLoaded : on_init / load config
-ConfigLoaded --> DependenciesReady : create services,\naggregates, gateways
-DependenciesReady --> Restoring : live restore path
-DependenciesReady --> WarmingUp : backtest warmup path
-Restoring --> WarmingUp : replay history
-WarmingUp --> Ready : warmup finished
-Ready --> Running : on_start
-Running --> Stopping : on_stop
-Stopping --> Stopped : save snapshot,\nshutdown handlers
+title 生命周期工作流 - 状态图
+[*] --> 已构造
+已构造 --> 已加载配置 : on_init
+已加载配置 --> 已装配依赖 : 服务 / 聚合 / 网关初始化
+已装配依赖 --> 恢复中 : 实盘恢复路径
+已装配依赖 --> 预热中 : 回测 warmup 路径
+恢复中 --> 预热中 : 历史回放
+预热中 --> 就绪 : warmup 完成
+就绪 --> 运行中 : on_start
+运行中 --> 停止中 : on_stop
+停止中 --> 已停止 : 保存快照 / 注销 handler
 @enduml

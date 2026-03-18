@@ -1,25 +1,28 @@
 @startuml
-title Lifecycle Workflow - Architecture
-!pragma layout smetana
+title 生命周期工作流 - 架构图
 skinparam shadowing false
 skinparam componentStyle rectangle
 
-component "StrategyEntry" as entry
-component "LifecycleWorkflow" as workflow
-component "ConfigLoader" as config
-component "SubscriptionWorkflow" as subscription
-component "Domain Services" as domain
-component "Gateways" as gateways
-component "Persistence + Monitor" as persistence
-component "BarPipeline" as bars
-component "FeishuEventHandler" as alerts
+component "LifecycleWorkflow" as Workflow
+rectangle "ConfigLoader" as Config
+rectangle "订阅初始化" as Subscription
+rectangle "指标 / 信号服务" as SignalServices
+rectangle "选约 / 定价 / 风控 /\n仓位服务" as DecisionServices
+rectangle "聚合根" as Aggregates
+rectangle "Gateway 组" as Gateways
+rectangle "持久化 / 监控" as Persistence
+rectangle "BarPipeline" as BarPipeline
+rectangle "Feishu 告警" as Alert
+rectangle "History / OMS 恢复" as Recovery
 
-entry --> workflow : on_init / on_start / on_stop
-workflow --> config : load TOML + imports
-workflow --> subscription : init subscription mode
-workflow --> domain : create indicator/signal\nselection/pricing/risk services
-workflow --> gateways : create market/account/\norder/execution gateways
-workflow --> persistence : create repository,\nautosave, serializer, monitor
-workflow --> bars : build optional bar pipeline
-workflow --> alerts : register / unregister notifications
+Workflow --> Config : 读取配置
+Workflow --> Subscription : 初始化订阅模式
+Workflow --> SignalServices : 构建策略内核服务
+Workflow --> DecisionServices : 构建可选领域服务
+Workflow --> Aggregates : 初始化 / 恢复
+Workflow --> Gateways : 构建市场接入
+Workflow --> Persistence : 创建仓储、autosave、monitor
+Workflow --> BarPipeline : 构建 K 线聚合
+Workflow --> Alert : 注册 / 注销事件处理器
+Workflow --> Recovery : 回测预热或实盘恢复
 @enduml

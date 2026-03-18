@@ -1,0 +1,63 @@
+@startuml
+title 核心对象与基础设施映射图
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "编排层" {
+  component "LifecycleWorkflow" as Lifecycle
+  component "MarketWorkflow" as Market
+  component "StateWorkflow" as State
+  component "SubscriptionWorkflow" as Subscription
+  component "EventBridge" as Bridge
+}
+
+package "核心对象" {
+  rectangle "InstrumentManager" as Instrument
+  rectangle "PositionAggregate" as Position
+  rectangle "CombinationAggregate" as Combination
+}
+
+package "基础设施" {
+  rectangle "Market / Account / Order /\nExecution Gateway" as Gateway
+  rectangle "HistoryDataRepository" as HistoryRepo
+  rectangle "StateRepository /\nAutoSaveService /\nJsonSerializer" as Persistence
+  rectangle "StrategyMonitor" as Monitor
+  rectangle "EventEngine /\nFeishuHandler" as EventInfra
+}
+
+package "领域服务" {
+  rectangle "Indicator / Signal" as SignalServices
+  rectangle "Selection / Pricing /\nRisk / Sizing" as DecisionServices
+}
+
+Lifecycle --> Instrument
+Lifecycle --> Position
+Lifecycle --> Combination
+Lifecycle --> Gateway
+Lifecycle --> Persistence
+Lifecycle --> Monitor
+Lifecycle --> SignalServices
+Lifecycle --> DecisionServices
+Lifecycle --> EventInfra
+Lifecycle --> HistoryRepo
+
+Market --> Instrument
+Market --> Position
+Market --> Gateway
+Market --> SignalServices
+Market --> DecisionServices
+Market --> Persistence
+
+State --> Instrument
+State --> Position
+State --> Combination
+State --> Monitor
+
+Subscription --> Instrument
+Subscription --> Position
+Subscription --> Gateway
+
+Bridge --> Position
+Bridge --> Combination
+Bridge --> EventInfra
+@enduml

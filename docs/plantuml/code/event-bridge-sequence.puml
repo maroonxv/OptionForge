@@ -1,0 +1,29 @@
+@startuml
+title 事件桥接编排 - 顺序图
+autonumber
+
+participant "Gateway / EventEngine" as Source
+participant "EventBridge" as Bridge
+participant "PositionAggregate" as Position
+participant "StrategyEntry" as Entry
+participant "CombinationAggregate" as Combination
+participant "EventEngine" as EventEngine
+
+Source -> Bridge : on_order / on_trade / on_position
+Bridge -> Position : update_from_*
+Bridge -> Entry : _publish_domain_events()
+Entry -> Bridge : publish_domain_events()
+Bridge -> Position : pop_domain_events()
+
+opt 存在 PositionClosedEvent
+  Bridge -> Entry : _sync_combination_status_on_position_closed(...)
+  Entry -> Bridge : sync_combination_status_on_position_closed(...)
+  Bridge -> Combination : sync_combination_status(...)
+end
+
+opt event_engine 可用
+  Bridge -> EventEngine : put(strategy alert event)
+end
+
+Bridge -> Entry : _reconcile_subscriptions(trigger)
+@enduml

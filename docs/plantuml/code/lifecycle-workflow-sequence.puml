@@ -1,29 +1,27 @@
 @startuml
-title Lifecycle Workflow - Sequence
+title 生命周期工作流 - 顺序图
 autonumber
 
-participant "StrategyEntry" as entry
-participant "LifecycleWorkflow" as workflow
-participant "ConfigLoader" as config
-participant "SubscriptionWorkflow" as subscription
-participant "StateRepository" as repository
-participant "HistoryDataRepository" as history
+participant "StrategyEntry" as Entry
+participant "LifecycleWorkflow" as Workflow
+participant "ConfigLoader" as Config
+participant "StateRepository" as Repo
+participant "HistoryDataRepository" as History
+participant "EventBridge" as Bridge
 
-entry -> workflow : on_init()
-workflow -> config : load target products\n+ strategy config
-workflow -> subscription : init_subscription_management()
-workflow -> workflow : create services,\naggregates, gateways
-workflow -> workflow : record initial snapshot
+Entry -> Workflow : on_init()
+Workflow -> Config : load_target_products()
+Workflow -> Config : load_toml(strategy_config)
+Workflow -> Workflow : 创建服务 / 聚合 / 网关 / 持久化
 
-alt backtesting mode
-  workflow -> history : load_bars / replay warmup
-else live mode
-  workflow -> repository : load(strategy_name)
-  repository --> workflow : snapshot or not found
-  workflow -> workflow : sync OMS snapshot
-  workflow -> history : replay_bars_from_database()
+alt 回测模式
+  Workflow -> History : load_bars(warmup_days)
+else 实盘模式
+  Workflow -> Repo : load(strategy_name)
+  Repo --> Workflow : snapshot / ArchiveNotFound
+  Workflow -> Bridge : on_position / on_order / on_trade
+  Workflow -> History : replay_bars_from_database()
 end
 
-workflow -> workflow : register Feishu alerts
-workflow --> entry : initialized runtime state
+Workflow --> Entry : 完成初始化
 @enduml

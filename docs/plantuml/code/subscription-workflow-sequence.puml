@@ -1,29 +1,30 @@
 @startuml
-title Subscription Workflow - Sequence
+title 订阅工作流 - 顺序图
 autonumber
 
-participant "StrategyEntry" as entry
-participant "SubscriptionWorkflow" as workflow
-participant "Market Gateway" as market
-participant "Account Gateway" as account
-participant "SubscriptionModeEngine" as engine
+participant "StrategyEntry" as Entry
+participant "SubscriptionWorkflow" as Workflow
+participant "MarketGateway" as Market
+participant "AccountGateway" as Account
+participant "SubscriptionModeEngine" as Engine
 
-entry -> workflow : reconcile_subscriptions(trigger)
-workflow -> market : get_all_contracts()
-workflow -> workflow : collect active signal symbols
-workflow -> account : get_all_positions()
-workflow -> workflow : collect position + pending order symbols
-workflow -> workflow : get active contracts by product
-workflow -> engine : resolve(SubscriptionRuntimeContext)
-engine --> workflow : decision
+Entry -> Workflow : reconcile_subscriptions(trigger)
+Workflow -> Market : get_all_contracts()
+Workflow -> Workflow : collect_active_signal_symbols()
+Workflow -> Account : get_all_positions()
+Workflow -> Workflow : collect_pending_order_symbols()
+Workflow -> Workflow : get_active_contract_map()
+Workflow -> Engine : resolve(context)
+Engine --> Workflow : decision
 
-loop symbols to subscribe
-  workflow -> market : subscribe(symbol)
+loop 待新增 symbol
+  Workflow -> Market : subscribe(symbol)
 end
 
-loop stale symbols to remove
-  workflow -> market : unsubscribe(symbol)
+loop stale candidate
+  Workflow -> Workflow : 检查 TTL / auto_unsubscribe
+  Workflow -> Market : unsubscribe(symbol)
 end
 
-workflow --> entry : updated subscribed symbol state
+Workflow --> Entry : 更新 subscribed / stale 状态
 @enduml

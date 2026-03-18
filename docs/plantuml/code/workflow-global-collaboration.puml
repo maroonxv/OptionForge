@@ -1,0 +1,25 @@
+@startuml
+title Workflow 全局协作图
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+component "StrategyEntry" as Entry
+component "LifecycleWorkflow" as Lifecycle
+component "MarketWorkflow" as Market
+component "StateWorkflow" as State
+component "SubscriptionWorkflow" as Subscription
+component "EventBridge" as Bridge
+
+Entry --> Lifecycle : on_init / on_start / on_stop
+Entry --> Market : on_tick / on_bars / _process_bars
+Entry --> State : _create_snapshot / _record_snapshot
+Entry --> Subscription : 订阅初始化 / 重算 / 订阅操作委托
+Entry --> Bridge : on_order / on_trade /\non_position / 领域事件发布
+
+Lifecycle --> Subscription : 初始化订阅模式\n启动后重算
+Lifecycle --> State : 初始快照 / 停止前保存
+Market --> Subscription : rollover / timer / signal 触发
+Market --> State : bar 处理后记录快照
+Bridge --> Subscription : on_order / on_trade /\non_position 后重算
+Bridge --> State : 通过宿主触发状态更新结果
+@enduml

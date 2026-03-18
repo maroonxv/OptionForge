@@ -1,20 +1,20 @@
 @startuml
-title State Workflow - Sequence
+title 状态工作流 - 顺序图
 autonumber
 
-participant "StrategyEntry" as entry
-participant "StateWorkflow" as workflow
-participant "Target Aggregate" as target
-participant "Position Aggregate" as positions
-participant "StrategyMonitor" as monitor
+participant "StrategyEntry" as Entry
+participant "StateWorkflow" as Workflow
+participant "TargetAggregate" as Target
+participant "PositionAggregate" as Position
+participant "StrategyMonitor" as Monitor
 
-entry -> workflow : create_snapshot()
-workflow -> target : to_snapshot()
-workflow -> positions : to_snapshot()
-workflow --> entry : snapshot dict
+Entry -> Workflow : _create_snapshot()
+Workflow -> Target : to_snapshot()
+Workflow -> Position : to_snapshot()
+Workflow --> Entry : snapshot dict
 
-entry -> workflow : record_snapshot()
-workflow -> monitor : record_snapshot(target,\npositions, entry)
-monitor --> workflow : ok / exception
-workflow --> entry : best-effort completion
+Entry -> Workflow : _record_snapshot()
+Workflow -> Monitor : record_snapshot(...)
+Monitor --> Workflow : 成功 / 异常
+Workflow --> Entry : 结束
 @enduml

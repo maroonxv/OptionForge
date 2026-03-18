@@ -1,0 +1,21 @@
+@startuml
+title 行情工作流 - 数据血缘图
+skinparam shadowing false
+
+rectangle "TickData / BarData" as MarketInput
+rectangle "Instrument 更新结果" as InstrumentState
+rectangle "OptionChainSnapshot" as Chain
+rectangle "IndicatorContext /\nIndicatorResult" as Indicator
+rectangle "SignalDecision" as Signal
+rectangle "选约 / 定价 / Greeks /\nSizing payload" as DecisionPayload
+rectangle "DecisionTrace" as Trace
+rectangle "Snapshot / autosave /\nsubscription refresh" as RuntimeOutput
+
+MarketInput --> InstrumentState : update_bar
+InstrumentState --> Chain : build_option_chain_snapshot
+Chain --> Indicator : enrich context
+Indicator --> Signal : build SignalContext
+Signal --> DecisionPayload : open/close pipeline
+DecisionPayload --> Trace : append_stage
+Trace --> RuntimeOutput : publish / save / refresh
+@enduml

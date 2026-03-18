@@ -1,0 +1,33 @@
+@startuml
+title 行情工作流 - 活动图
+start
+:接收 bars;
+:更新 last_bars;
+
+if (target_aggregate 可用且非 warmup?) then (是)
+  :执行换月检查;
+  :按阈值触发 universe 校验;
+endif
+
+if (bar_pipeline 已启用?) then (是)
+  :交给 bar_pipeline.handle_bars;
+else (否)
+  :直接进入 _process_bars;
+endif
+
+:逐个 vt_symbol 处理 bar;
+:更新 instrument;
+:构建 option_chain / indicator_context;
+:执行开仓子流程;
+:对每个 active position 执行平仓子流程;
+:记录快照;
+
+if (auto_save 可用且非 warmup?) then (是)
+  :maybe_save;
+endif
+
+if (到达订阅刷新周期?) then (是)
+  :reconcile_subscriptions(timer);
+endif
+stop
+@enduml

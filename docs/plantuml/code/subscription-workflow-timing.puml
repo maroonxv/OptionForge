@@ -1,0 +1,17 @@
+@startuml
+title 订阅工作流 - 时间驱动图
+participant "计时器 / TTL" as Clock
+participant "SubscriptionWorkflow" as Workflow
+
+== refresh 周期 ==
+Clock -> Workflow : refresh_sec 到期
+Workflow -> Workflow : reconcile_subscriptions(timer)
+
+== signal 临时订阅 ==
+Clock -> Workflow : signal ttl 递减
+Workflow -> Workflow : collect_active_signal_symbols
+
+== stale 退订 ==
+Clock -> Workflow : stale_ttl_sec 到期
+Workflow -> Workflow : 判断是否 unsubscribe
+@enduml

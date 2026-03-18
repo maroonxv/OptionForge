@@ -1,0 +1,24 @@
+@startuml
+title 生命周期工作流 - 活动图
+start
+:记录初始化日志;
+:读取 target_products 与 strategy_config;
+:加载 subscription_config;
+:初始化订阅管理;
+:构建 indicator / signal /\nselection / pricing / risk / sizing 服务;
+:初始化 aggregate / gateway /\npersistence / monitor / bar pipeline;
+:记录初始快照;
+
+if (是否回测模式?) then (是)
+  :关闭交易开关;
+  :加载 warmup bars;
+else (否)
+  :从 StateRepository 恢复快照;
+  :同步 OMS 持仓 / 委托 / 成交;
+  :校验 universe;
+  :回放历史 bars 预热;
+endif
+
+:注册飞书告警;
+stop
+@enduml

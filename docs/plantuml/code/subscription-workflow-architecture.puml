@@ -1,23 +1,20 @@
 @startuml
-title Subscription Workflow - Architecture
-!pragma layout smetana
+title 订阅工作流 - 架构图
 skinparam shadowing false
 skinparam componentStyle rectangle
 
-component "StrategyEntry" as entry
-component "SubscriptionWorkflow" as workflow
-component "SubscriptionModeEngine" as engine
-component "Market Gateway" as market
-component "Account Gateway" as account
-component "Target Aggregate" as target
-component "Position Aggregate" as positions
-component "Subscription Sets\nsubscribed / stale / temp" as state
+component "SubscriptionWorkflow" as Workflow
+rectangle "SubscriptionModeEngine" as Engine
+rectangle "MarketGateway" as Market
+rectangle "AccountGateway" as Account
+rectangle "TargetAggregate" as Target
+rectangle "PositionAggregate" as Position
+rectangle "subscribed_symbols /\nstale / temp_symbols" as RuntimeState
 
-entry --> workflow : init + reconcile hooks
-workflow --> engine : resolve(context)
-workflow --> market : contracts, ticks,\nsubscribe/unsubscribe
-workflow --> account : get_all_positions()
-workflow --> target : active contracts by product
-workflow --> positions : active positions / pending orders
-workflow --> state : update temp symbols,\nstale timers, subscriptions
+Workflow --> Engine : resolve(context)
+Workflow --> Market : contracts / ticks /\nsubscribe / unsubscribe
+Workflow --> Account : 持仓来源
+Workflow --> Target : 主力合约来源
+Workflow --> Position : 挂单 / 活跃持仓来源
+Workflow --> RuntimeState : 维护订阅运行态
 @enduml

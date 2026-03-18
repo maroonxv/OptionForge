@@ -1,0 +1,21 @@
+@startuml
+title 行情工作流 - 时间驱动图
+participant "时钟 / 市场时间" as Clock
+participant "MarketWorkflow" as Workflow
+
+== 盘中周期 ==
+Clock -> Workflow : bar 到达
+Workflow -> Workflow : on_bars 主链
+
+== 指定时刻 ==
+Clock -> Workflow : 14:50
+Workflow -> Workflow : 换月检查
+
+== 保存周期 ==
+Clock -> Workflow : autosave 周期到达
+Workflow -> Workflow : maybe_save
+
+== 订阅刷新周期 ==
+Clock -> Workflow : subscription_refresh_sec 到达
+Workflow -> Workflow : reconcile_subscriptions(timer)
+@enduml

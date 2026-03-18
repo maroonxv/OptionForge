@@ -1,43 +1,42 @@
 @startuml
-title Market Workflow - Sequence
+title 行情工作流 - 顺序图
 autonumber
 
-participant "StrategyEntry" as entry
-participant "MarketWorkflow" as workflow
-participant "Target Aggregate" as target
-participant "Market Gateway" as market
-participant "Indicator Service" as indicator
-participant "Signal Service" as signal
-participant "Decision Support" as support
-participant "Observability" as obs
+participant "StrategyEntry" as Entry
+participant "MarketWorkflow" as Workflow
+participant "InstrumentManager" as Instrument
+participant "MarketGateway" as Market
+participant "IndicatorService" as Indicator
+participant "SignalService" as Signal
+participant "Decision helpers" as Decision
+participant "Observability" as Obs
 
-entry -> workflow : on_bars(bars)
-workflow -> workflow : rollover check + timer refresh
-workflow -> target : update_bar(vt_symbol, bar_data)
-target --> workflow : instrument
-workflow -> market : get_all_contracts / get_tick
-workflow -> workflow : build option chain snapshot
-workflow -> indicator : calculate_bar(instrument, context)
-indicator --> workflow : IndicatorComputationResult
-workflow -> signal : check_open_signal(...)
-signal --> workflow : SignalDecision?
+Entry -> Workflow : on_bars(bars)
+Workflow -> Workflow : rollover / universe / timer 检查
+Workflow -> Instrument : update_bar(vt_symbol, bar_data)
+Instrument --> Workflow : instrument
+Workflow -> Market : get_all_contracts / get_tick
+Workflow -> Workflow : build_option_chain_snapshot()
+Workflow -> Indicator : calculate_bar(...)
+Indicator --> Workflow : IndicatorResult
+Workflow -> Signal : check_open_signal(...)
+Signal --> Workflow : SignalDecision?
 
-opt open signal present
-  workflow -> support : select contract
-  workflow -> support : compute greeks / pricing
-  workflow -> support : compute sizing
-  workflow -> obs : publish open trace
+opt 开仓信号存在
+  Workflow -> Decision : 选约 / Greeks / 定价 / 仓位
+  Decision --> Workflow : payloads
+  Workflow -> Obs : publish_trace(open)
 end
 
-loop each active position
-  workflow -> signal : check_close_signal(...)
-  signal --> workflow : SignalDecision?
-  opt close signal present
-    workflow -> support : calculate_close_volume(...)
-    workflow -> obs : publish close trace
+loop 每个 active position
+  Workflow -> Signal : check_close_signal(...)
+  Signal --> Workflow : SignalDecision?
+  opt 平仓信号存在
+    Workflow -> Decision : calculate_close_volume(...)
+    Workflow -> Obs : publish_trace(close)
   end
 end
 
-workflow -> obs : record snapshot / maybe autosave
-workflow --> entry : updated aggregates + traces
+Workflow -> Obs : record_snapshot / maybe_save
+Workflow --> Entry : 完成一轮 bar 处理
 @enduml

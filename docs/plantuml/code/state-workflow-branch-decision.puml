@@ -1,0 +1,16 @@
+@startuml
+title 状态工作流 - 分支判定图
+start
+if (combination_aggregate 存在?) then (是)
+  :输出 combination_aggregate snapshot;
+else (否)
+  :跳过组合快照;
+endif
+
+if (monitor 可用?) then (是)
+  :尝试记录监控快照;
+else (否)
+  :跳过 monitor;
+endif
+stop
+@enduml

@@ -1,0 +1,29 @@
+@startuml
+title 订阅工作流 - 分支判定图
+start
+if (subscription_enabled 为 false?) then (是)
+  :直接返回;
+  stop
+endif
+
+if (trigger 不在允许集合?) then (是)
+  :跳过本次重算;
+  stop
+endif
+
+if (decision.enabled 为 false?) then (是)
+  :不执行订阅变更;
+  stop
+endif
+
+if (dry_run 为 true?) then (是)
+  :只计算不落地;
+endif
+
+if (auto_unsubscribe 为 false?) then (是)
+  :保留 stale 候选;
+else (否)
+  :按 stale_ttl_sec 决定是否退订;
+endif
+stop
+@enduml

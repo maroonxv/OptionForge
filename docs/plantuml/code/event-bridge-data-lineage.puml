@@ -1,0 +1,16 @@
+@startuml
+title 事件桥接编排 - 数据血缘图
+skinparam shadowing false
+
+rectangle "OrderData / TradeData /\nPositionData" as ExternalEvents
+rectangle "标准化字典" as Normalized
+rectangle "PositionAggregate /\nDomain Events" as Domain
+rectangle "CombinationAggregate" as Combination
+rectangle "StrategyAlertData /\nEventEngine Event" as Alerts
+
+ExternalEvents --> Normalized : 提取字段
+Normalized --> Domain : update_from_*
+Domain --> Combination : PositionClosedEvent 触发同步
+Domain --> Alerts : Manual / Risk 事件映射
+Combination --> Alerts : CombinationStatusChanged 映射
+@enduml

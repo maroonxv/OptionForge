@@ -1,0 +1,18 @@
+@startuml
+title 状态工作流 - 活动图
+start
+:进入 create_snapshot / record_snapshot;
+:读取 target_aggregate 快照;
+:读取 position_aggregate 快照;
+if (combination_aggregate 存在?) then (是)
+  :加入 combination 快照;
+endif
+:返回 snapshot dict;
+
+if (monitor 可用?) then (是)
+  :调用 record_snapshot;
+else (否)
+  :直接结束;
+endif
+stop
+@enduml

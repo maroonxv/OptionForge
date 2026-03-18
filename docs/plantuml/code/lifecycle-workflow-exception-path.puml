@@ -1,0 +1,32 @@
+@startuml
+title 生命周期工作流 - 异常/降级路径图
+start
+:读取目标品种配置;
+if (target_products 为空?) then (是)
+  :记录 error;
+  stop
+endif
+
+:读取 strategy_config;
+if (读取失败?) then (是)
+  :full_config 回退为 {};
+endif
+
+:读取 subscription_config;
+if (读取失败?) then (是)
+  :禁用订阅模式并继续;
+endif
+
+if (状态损坏?) then (是)
+  :拒绝启动;
+  stop
+endif
+
+if (warmup / 回放失败?) then (是)
+  :记录异常并中止启动;
+  stop
+endif
+
+:继续后续初始化;
+stop
+@enduml

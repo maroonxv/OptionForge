@@ -1,19 +1,18 @@
 @startuml
-title State Workflow - Architecture
-!pragma layout smetana
+title 状态工作流 - 架构图
 skinparam shadowing false
 skinparam componentStyle rectangle
 
-component "StrategyEntry" as entry
-component "StateWorkflow" as workflow
-component "Target Aggregate" as target
-component "Position Aggregate" as positions
-component "Combination Aggregate" as combinations
-component "StrategyMonitor" as monitor
+component "StateWorkflow" as Workflow
+rectangle "InstrumentManager" as Instrument
+rectangle "PositionAggregate" as Position
+rectangle "CombinationAggregate" as Combination
+rectangle "StrategyMonitor" as Monitor
+rectangle "Snapshot dict" as Snapshot
 
-entry --> workflow : create / record snapshot
-workflow --> target : to_snapshot()
-workflow --> positions : to_snapshot()
-workflow --> combinations : optional to_snapshot()
-workflow --> monitor : record_snapshot(...)
+Workflow --> Instrument : to_snapshot()
+Workflow --> Position : to_snapshot()
+Workflow --> Combination : 可选 to_snapshot()
+Workflow --> Snapshot : 组装持久化结构
+Workflow --> Monitor : record_snapshot(...)
 @enduml

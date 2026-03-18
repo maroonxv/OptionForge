@@ -1,0 +1,17 @@
+@startuml
+title 状态工作流 - 数据血缘图
+skinparam shadowing false
+
+rectangle "target_aggregate snapshot" as Target
+rectangle "position_aggregate snapshot" as Position
+rectangle "combination_aggregate snapshot" as Combination
+rectangle "StateWorkflow" as Workflow
+rectangle "snapshot dict" as Snapshot
+rectangle "monitor record" as MonitorRecord
+
+Target --> Workflow
+Position --> Workflow
+Combination --> Workflow : 可选
+Workflow --> Snapshot : create_snapshot()
+Snapshot --> MonitorRecord : record_snapshot()
+@enduml

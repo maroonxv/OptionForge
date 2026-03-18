@@ -1,0 +1,28 @@
+@startuml
+title 事件入口分发图
+skinparam shadowing false
+
+rectangle "StrategyEntry.on_init" as on_init
+rectangle "StrategyEntry.on_start" as on_start
+rectangle "StrategyEntry.on_stop" as on_stop
+rectangle "StrategyEntry.on_tick" as on_tick
+rectangle "StrategyEntry.on_bars" as on_bars
+rectangle "StrategyEntry.on_order" as on_order
+rectangle "StrategyEntry.on_trade" as on_trade
+rectangle "StrategyEntry.on_position" as on_position
+rectangle "StrategyEntry.process_position_event" as process_position_event
+
+component "LifecycleWorkflow" as Lifecycle
+component "MarketWorkflow" as Market
+component "EventBridge" as Bridge
+
+on_init --> Lifecycle : on_init()
+on_start --> Lifecycle : on_start()
+on_stop --> Lifecycle : on_stop()
+on_tick --> Market : on_tick()
+on_bars --> Market : on_bars()
+on_order --> Bridge : on_order()
+on_trade --> Bridge : on_trade()
+on_position --> Bridge : on_position()
+process_position_event --> Bridge : process_position_event()
+@enduml

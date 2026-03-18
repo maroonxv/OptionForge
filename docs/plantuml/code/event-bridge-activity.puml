@@ -1,0 +1,22 @@
+@startuml
+title 事件桥接编排 - 活动图
+start
+:接收 order / trade / position / event;
+if (position_aggregate 不可用?) then (是)
+  stop
+endif
+
+:把外部对象转换成字典;
+:更新 position_aggregate;
+:发布领域事件;
+:触发订阅重算;
+
+if (领域事件中存在 PositionClosedEvent?) then (是)
+  :同步 combination_aggregate 状态;
+endif
+
+if (event_engine 可用?) then (是)
+  :把 Manual / Risk / Combination 事件转成告警事件;
+endif
+stop
+@enduml

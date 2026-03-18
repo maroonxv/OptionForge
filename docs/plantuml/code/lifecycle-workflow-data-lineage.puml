@@ -1,0 +1,15 @@
+@startuml
+title 生命周期工作流 - 数据血缘图
+skinparam shadowing false
+
+rectangle "entry.setting /\nstrategy_full_config /\nconfig/*.toml" as ConfigInput
+rectangle "service_activation /\nstrategy_contracts /\nsubscription_config" as NormalizedConfig
+rectangle "领域服务 / 聚合根 /\nGateway / Persistence" as RuntimeParts
+rectangle "历史快照 / OMS 数据 /\n历史 bars" as RecoveryInputs
+rectangle "已装配的 StrategyEntry" as ReadyEntry
+
+ConfigInput --> NormalizedConfig : 读取 / 归一化
+NormalizedConfig --> RuntimeParts : 构建依赖
+RecoveryInputs --> RuntimeParts : 恢复 / 预热
+RuntimeParts --> ReadyEntry : 注入宿主对象
+@enduml

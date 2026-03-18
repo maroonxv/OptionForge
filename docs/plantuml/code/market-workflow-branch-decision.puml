@@ -1,0 +1,32 @@
+@startuml
+title 行情工作流 - 分支判定图
+start
+:bar 到达;
+
+if (是否处于 warmup?) then (是)
+  :跳过 autosave / timer refresh;
+endif
+
+if (14:50 且具备 future_selection_service?) then (是)
+  :执行换月检查;
+endif
+
+if (option_chain 功能关闭或构建失败?) then (是)
+  :开仓流程在 option_chain 阶段提前结束;
+endif
+
+if (open signal 缺失?) then (是)
+  :开仓 trace 直接结束;
+elseif (selection 失败?)
+  :开仓 trace 在 selection 结束;
+elseif (pricing / sizing 缺失?)
+  :继续，但相关 stage 标记为 skipped;
+endif
+
+if (close signal 缺失?) then (是)
+  :平仓 trace 结束;
+else (否)
+  :尝试 close plan;
+endif
+stop
+@enduml

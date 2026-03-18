@@ -1,0 +1,18 @@
+@startuml
+title 事件桥接编排 - 架构图
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+component "EventBridge" as Bridge
+rectangle "OrderData / TradeData /\nPositionData / Event" as ExternalEvents
+rectangle "PositionAggregate" as Position
+rectangle "CombinationAggregate" as Combination
+rectangle "StrategyEntry hooks" as EntryHooks
+rectangle "EventEngine" as EventEngine
+
+ExternalEvents --> Bridge : on_order / on_trade /\non_position / process_position_event
+Bridge --> Position : 更新聚合
+Bridge --> EntryHooks : _publish_domain_events /\n_reconcile_subscriptions
+Bridge --> Combination : 同步组合状态
+Bridge --> EventEngine : 发出策略告警事件
+@enduml

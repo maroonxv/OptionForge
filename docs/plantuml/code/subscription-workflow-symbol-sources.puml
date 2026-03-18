@@ -1,0 +1,19 @@
+@startuml
+title 订阅工作流 - 目标合约来源汇聚图
+skinparam shadowing false
+
+rectangle "configured_contracts" as Configured
+rectangle "active_contracts_by_product" as ActiveContracts
+rectangle "position_symbols" as Positions
+rectangle "pending_order_symbols" as Orders
+rectangle "signal_symbols" as Signals
+rectangle "SubscriptionWorkflow" as Workflow
+rectangle "target_symbols" as TargetSymbols
+
+Configured --> Workflow
+ActiveContracts --> Workflow
+Positions --> Workflow
+Orders --> Workflow
+Signals --> Workflow
+Workflow --> TargetSymbols : 去重 / 过滤 / 生成目标集合
+@enduml

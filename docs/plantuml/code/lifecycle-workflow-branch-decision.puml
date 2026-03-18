@@ -1,0 +1,29 @@
+@startuml
+title 生命周期工作流 - 分支判定图
+start
+:加载主配置;
+if (strategy_full_config 已注入?) then (是)
+  :直接使用注入配置;
+else (否)
+  :从 config/strategy_config.toml 读取;
+endif
+
+if (subscription.toml 存在?) then (是)
+  :加载订阅配置;
+else (否)
+  :回退到 enabled=false;
+endif
+
+if (bar_window > 0?) then (是)
+  :启用 BarPipeline;
+else (否)
+  :使用直通模式;
+endif
+
+if (backtesting?) then (是)
+  :走回测 warmup;
+else (否)
+  :走实盘恢复 + 回放;
+endif
+stop
+@enduml
