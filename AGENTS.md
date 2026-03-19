@@ -41,3 +41,13 @@ type 取值：
 
 
 针对领域服务或者基础设施，不要写 facade, coordinator 一类的代码，直接让上层调用具体服务/基础设施即可
+
+When creating a git commit message:
+
+If the agent is Codex, append exactly: Co-authored-by: codex codex@users.noreply.github.com
+
+If the agent is Claude, append a GitHub-compatible co-author trailer only if the configured attribution email is verified to map correctly on GitHub; otherwise do not add a Claude co-author line.When creating a git commit message:
+
+If the agent is Codex, append exactly: Co-authored-by: codex codex@users.noreply.github.com
+
+If the agent is Claude, append a GitHub-compatible co-author trailer only if the configured attribution email is verified to map correctly on GitHub; otherwise do not add a Claude co-author line.
