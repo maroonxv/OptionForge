@@ -5,6 +5,29 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Normalize-ArgList {
+    param([string[]]$Values)
+
+    $normalized = @()
+    foreach ($value in $Values) {
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        foreach ($part in ($value -split ",")) {
+            $trimmed = $part.Trim()
+            if (-not [string]::IsNullOrWhiteSpace($trimmed)) {
+                $normalized += $trimmed
+            }
+        }
+    }
+
+    return $normalized | Select-Object -Unique
+}
+
+$Services = Normalize-ArgList $Services
+$RequiredEnv = Normalize-ArgList $RequiredEnv
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $deployRoot = Join-Path $repoRoot ".worktrees\deploy-main"
 $composeFile = Join-Path $deployRoot "deploy\docker-compose.yml"
