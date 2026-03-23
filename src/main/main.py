@@ -64,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--log-dir",
         type=str,
-        default="data/logs",
+        default="logs/runner",
         help="日志目录"
     )
 
@@ -156,7 +156,7 @@ def run_daemon(args: argparse.Namespace) -> None:
         override_config_path=args.override_config,
         log_level=args.log_level,
         log_dir=args.log_dir,
-        log_name=getattr(args, "log_name", "strategy.log")
+        log_name=getattr(args, "log_name", "runner")
     )
     # 注意：守护进程模式目前不支持模拟交易参数传递
     # 如果需要，ParentProcess 也需要更新。假设模拟交易使用独立模式。
@@ -181,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     
     # 确定日志文件名和目录
-    log_name = "strategy.log"
+    log_name = "runner"
     if args.override_config:
         path = Path(args.override_config)
         timeframe = path.stem
@@ -194,11 +194,7 @@ def main(argv: list[str] | None = None) -> int:
             # override ???????????????
             pass
 
-        base_log_dir = Path(args.log_dir)
-        if base_log_dir.name != timeframe:
-            args.log_dir = str(base_log_dir / timeframe)
-
-        log_name = f"strategy_{timeframe}.log"
+        log_name = f"runner_{timeframe}"
 
     args.log_name = log_name
     

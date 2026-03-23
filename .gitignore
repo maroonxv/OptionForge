@@ -10,6 +10,7 @@ TODO
 .hypothesis/
 
 temp/
+logs/
 .worktrees/
 
 artifacts/*/latest.json

@@ -11,6 +11,7 @@ src/main/bootstrap/ - 引擎初始化与共享启动逻辑
     - patch_data_recorder_setting_path: 重定向 data_recorder_setting.json 路径
 """
 from src.main.bootstrap.engine_factory import create_engines, EngineBundle
+from src.main.bootstrap.vnpy_logging import configure_vnpy_logging
 from src.main.bootstrap.database_setup import setup_vnpy_database
 from src.main.bootstrap.ctp_tick_patch import patch_ctp_pre_settlement_price
 from src.main.bootstrap.recorder_patch import patch_data_recorder_setting_path
@@ -18,6 +19,7 @@ from src.main.bootstrap.recorder_patch import patch_data_recorder_setting_path
 __all__ = [
     "create_engines",
     "EngineBundle",
+    "configure_vnpy_logging",
     "setup_vnpy_database",
     "patch_ctp_pre_settlement_price",
     "patch_data_recorder_setting_path",

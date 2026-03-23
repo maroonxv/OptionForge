@@ -232,6 +232,15 @@ flowchart LR
 <!-- readme-gen:end:architecture -->
 
 <!-- readme-gen:start:quick-start -->
+> [!IMPORTANT]
+> Docker 部署只支持 `deploy\deploy-main.ps1` 作为入口，环境文件应放在 `.worktrees/deploy-main/.env`。默认宿主机日志目录为 `.worktrees/deploy-main/logs/*`，也可以通过 `HOST_LOGS_DIR` 覆盖。
+
+| 宿主机目录 | 容器目录 | 内容 | 文件名示例 |
+| --- | --- | --- | --- |
+| `logs/runner` | `/app/logs/runner` | runner Python 日志 | `runner_20260323.log`、`runner_15m_20260323.log` |
+| `logs/monitor` | `/app/logs/monitor` | monitor Web 日志 | `monitor_20260323.log` |
+| `logs/postgresql` | `/var/log/postgresql` | PostgreSQL 文件日志 | `postgresql-2026-03-23.log` |
+| `logs/vnpy` | `/app/logs/vnpy` | vn.py 自身日志 | `vt_20260323.log` |
 ## 快速开始
 
 ### 方式一：推荐，使用 Docker Compose 启动完整栈
@@ -239,10 +248,10 @@ flowchart LR
 1. 复制部署环境变量模板：
 
 ```powershell
-Copy-Item deploy/.env.example deploy/.env
+Copy-Item deploy/.env.example .worktrees/deploy-main/.env
 ```
 
-2. 按需修改 `deploy/.env`，至少确认这些参数：
+2. 按需修改 `.worktrees/deploy-main/.env`，至少确认这些参数：
 
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -250,18 +259,20 @@ Copy-Item deploy/.env.example deploy/.env
 - `APP_CONFIG_PATH`
 - `APP_EXTRA_ARGS`
 - `HOST_DATA_DIR`
+- `HOST_LOGS_DIR`
 
 3. 启动数据库、策略运行器和监控页面：
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+powershell -ExecutionPolicy Bypass -File deploy\deploy-main.ps1 `
+  -Services postgres,runner,monitor
 ```
 
 4. 查看容器状态与策略日志：
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f runner
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml ps
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml logs -f runner
 ```
 
 5. 打开监控页面：`http://localhost:5007`
@@ -269,7 +280,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f runne
 6. 停止服务：
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml down
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml down
 ```
 
 ### 方式二：本地开发调试

@@ -52,7 +52,7 @@ class RecorderProcess:
     def __init__(
         self,
         log_level: str = "INFO",
-        log_dir: str = "logs",
+        log_dir: str = "logs/runner",
     ) -> None:
         """
         初始化行情录制进程
@@ -165,13 +165,13 @@ def parse_args() -> argparse.Namespace:
     """解析命令行参数"""
     parser = argparse.ArgumentParser(description="独立行情录制")
     parser.add_argument("--log-level", default="INFO")
-    parser.add_argument("--log-dir", default="data/logs")
+    parser.add_argument("--log-dir", default="logs/runner")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    setup_logging(args.log_level, args.log_dir)
+    setup_logging(args.log_level, args.log_dir, "recorder")
     
     process = RecorderProcess(
         log_level=args.log_level,

@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 from flask import Flask, current_app, jsonify, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room
 
+from src.main.utils.logging_setup import setup_logging
 from src.strategy.infrastructure.monitoring.notification_protocol import (
     MONITOR_DECISION_TRACE_UPDATES_CHANNEL,
     MONITOR_SNAPSHOT_UPDATES_CHANNEL,
@@ -21,6 +22,10 @@ from src.web.reader import PostgresSnapshotReader, StrategyStateReader
 load_dotenv()
 
 socketio = SocketIO(cors_allowed_origins="*", async_mode="threading")
+
+
+def configure_monitor_logging() -> None:
+    setup_logging("INFO", os.getenv("MONITOR_LOG_DIR", "logs/monitor"), "monitor")
 
 
 def _build_state_reader() -> StrategyStateReader:
@@ -268,6 +273,7 @@ def create_app(
     snapshot_reader: Optional[PostgresSnapshotReader] = None,
     state_reader: Optional[StrategyStateReader] = None,
 ) -> Flask:
+    configure_monitor_logging()
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     socketio.init_app(app)

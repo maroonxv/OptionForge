@@ -55,7 +55,7 @@ def command(
     config: Path = typer.Option(Path("config/strategy_config.toml"), "--config", help="策略配置文件路径。"),
     override_config: Path | None = typer.Option(None, "--override-config", help="覆盖配置文件路径。"),
     log_level: LogLevel = typer.Option(LogLevel.info, "--log-level", help="日志级别。"),
-    log_dir: Path = typer.Option(Path("data/logs"), "--log-dir", help="日志目录。"),
+    log_dir: Path = typer.Option(Path("logs/runner"), "--log-dir", help="日志目录。"),
     no_ui: str = typer.Option("", "--no-ui", flag_value="1", show_default=False, help="无界面模式运行。"),
     paper: str = typer.Option("", "--paper", flag_value="1", show_default=False, help="启用模拟交易模式。"),
     json_output: bool = False,

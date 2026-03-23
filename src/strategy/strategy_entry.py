@@ -96,16 +96,17 @@ class StrategyEntry(StrategyTemplate):
         super().__init__(strategy_engine, strategy_name, vt_symbols, setting)
 
         # ── 日志 ──
-        log_dir_setting = setting.get("log_dir", "")
-        log_filename = "strategy.log"
+        log_dir_setting = str(setting.get("log_dir", "") or "")
+        log_filename = "strategy"
         if log_dir_setting:
-            sep = "data/logs" if "data/logs" in log_dir_setting else (
-                "data\\logs" if "data\\logs" in log_dir_setting else ""
-            )
-            if sep:
-                relative_log_dir = os.path.relpath(log_dir_setting, os.path.join("data", "logs"))
-                if relative_log_dir != ".":
-                    log_filename = os.path.join(relative_log_dir, "strategy.log")
+            normalized_log_dir = log_dir_setting.replace("\\", "/")
+            marker = "logs/runner"
+            relative_log_dir = ""
+            marker_index = normalized_log_dir.lower().find(marker)
+            if marker_index != -1:
+                relative_log_dir = normalized_log_dir[marker_index + len(marker) :].strip("/")
+            if relative_log_dir:
+                log_filename = os.path.join(*relative_log_dir.split("/"), "strategy")
         self.logger = setup_strategy_logger(self.strategy_name, log_filename)
 
         # ── 基础设施: 历史数据仓库 ──
