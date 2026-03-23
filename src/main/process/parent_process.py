@@ -52,8 +52,8 @@ class ParentProcess:
         config_path: str,
         override_config_path: Optional[str] = None,
         log_level: str = "INFO",
-        log_dir: str = "logs",
-        log_name: str = "strategy.log"
+        log_dir: str = "logs/runner",
+        log_name: str = "runner"
     ) -> None:
         """
         初始化守护进程

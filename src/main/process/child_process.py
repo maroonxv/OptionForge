@@ -59,7 +59,7 @@ class ChildProcess:
         config_path: str,
         override_config_path: Optional[str] = None,
         log_level: str = "INFO",
-        log_dir: str = "logs",
+        log_dir: str = "logs/runner",
         paper_trading: bool = False
     ) -> None:
         """
@@ -569,8 +569,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", required=True)
     parser.add_argument("--override-config", help="覆盖配置文件路径")
     parser.add_argument("--log-level", default="INFO")
-    parser.add_argument("--log-dir", default="logs")
-    parser.add_argument("--log-name", default="strategy.log")
+    parser.add_argument("--log-dir", default="logs/runner")
+    parser.add_argument("--log-name", default="runner")
     
     return parser.parse_args()
 

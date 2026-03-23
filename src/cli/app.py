@@ -495,7 +495,7 @@ def init_click(name: str, destination: Path, force: bool, json_output: bool) -> 
 @click.option(
     "--log-dir",
     type=click.Path(path_type=Path, file_okay=False),
-    default=Path("data/logs"),
+    default=Path("logs/runner"),
     show_default=True,
     help="日志目录。",
 )

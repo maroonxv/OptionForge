@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from vnpy.event import EventEngine
 from vnpy.trader.engine import MainEngine
 
+from src.main.bootstrap.vnpy_logging import configure_vnpy_logging
+
 
 @dataclass
 class EngineBundle:
@@ -25,7 +27,7 @@ class EngineBundle:
     main_engine: MainEngine
 
 
-def create_engines() -> EngineBundle:
+def create_engines(vnpy_log_dir: str | None = None) -> EngineBundle:
     """
     创建并返回 VnPy 核心引擎实例。
     
@@ -40,6 +42,7 @@ def create_engines() -> EngineBundle:
         >>> bundle.event_engine  # EventEngine 实例
         >>> bundle.main_engine   # MainEngine 实例
     """
+    configure_vnpy_logging(vnpy_log_dir)
     event_engine = EventEngine()
     main_engine = MainEngine(event_engine)
     return EngineBundle(event_engine=event_engine, main_engine=main_engine)

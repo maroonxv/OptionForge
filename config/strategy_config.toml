@@ -42,7 +42,7 @@ emit_noop_decisions = false
 # 运行时配置
 [runtime]
 log_level = "INFO"            # 日志输出级别，可选 DEBUG, INFO, WARNING, ERROR
-log_dir = "data/logs"         # 日志文件存放的相对目录
+log_dir = "logs/runner"       # 日志文件存放的相对目录
 heartbeat_interval = 60       # 心跳检测间隔（秒），预留配置，目前代码中未强制依赖
 max_restart_count = 10        # 守护进程允许重启子进程的最大次数，超过后将停止运行
 restart_delay = 5.0           # 每次重启子进程前的等待时间（秒），避免频繁重启

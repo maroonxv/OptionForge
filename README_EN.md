@@ -222,15 +222,25 @@ This loop is what makes the repository more Agent-friendly than a typical strate
 
 ## Quick Start
 
+> [!IMPORTANT]
+> Docker deployment is only supported through `deploy\deploy-main.ps1`, and the environment file must live at `.worktrees/deploy-main/.env`. By default, host log files are written under `.worktrees/deploy-main/logs/*`, and you can override that with `HOST_LOGS_DIR`.
+
+| Host directory | Container directory | Content | Example filenames |
+| --- | --- | --- | --- |
+| `logs/runner` | `/app/logs/runner` | runner Python logs | `runner_20260323.log`, `runner_15m_20260323.log` |
+| `logs/monitor` | `/app/logs/monitor` | monitor Web logs | `monitor_20260323.log` |
+| `logs/postgresql` | `/var/log/postgresql` | PostgreSQL file logs | `postgresql-2026-03-23.log` |
+| `logs/vnpy` | `/app/logs/vnpy` | vn.py native logs | `vt_20260323.log` |
+
 ### Option 1: Recommended, start the full stack with Docker Compose
 
 1. Copy the deployment environment template:
 
 ```powershell
-Copy-Item deploy/.env.example deploy/.env
+Copy-Item deploy/.env.example .worktrees/deploy-main/.env
 ```
 
-2. Adjust `deploy/.env` as needed, especially:
+2. Adjust `.worktrees/deploy-main/.env` as needed, especially:
 
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -238,18 +248,20 @@ Copy-Item deploy/.env.example deploy/.env
 - `APP_CONFIG_PATH`
 - `APP_EXTRA_ARGS`
 - `HOST_DATA_DIR`
+- `HOST_LOGS_DIR`
 
 3. Start PostgreSQL, the runner, and the monitoring UI:
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+powershell -ExecutionPolicy Bypass -File deploy\deploy-main.ps1 `
+  -Services postgres,runner,monitor
 ```
 
 4. Check container status and runner logs:
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml ps
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f runner
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml ps
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml logs -f runner
 ```
 
 5. Open the monitoring page: `http://localhost:5007`
@@ -257,7 +269,7 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.yml logs -f runne
 6. Stop the stack:
 
 ```powershell
-docker compose --env-file deploy/.env -f deploy/docker-compose.yml down
+docker compose --project-directory .worktrees/deploy-main/deploy --env-file .worktrees/deploy-main/.env -f .worktrees/deploy-main/deploy/docker-compose.yml down
 ```
 
 ### Option 2: Local development and debugging

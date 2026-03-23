@@ -38,7 +38,7 @@ DEFAULT_STRATEGY_SETTINGS: dict[str, object] = {
 
 DEFAULT_RUNTIME_CONFIG: dict[str, object] = {
     "log_level": "INFO",
-    "log_dir": "data/logs",
+    "log_dir": "logs/runner",
     "heartbeat_interval": 60,
     "max_restart_count": 10,
     "restart_delay": 5.0,

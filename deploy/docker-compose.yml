@@ -3,12 +3,27 @@ name: trading-stack
 services:
   postgres:
     image: postgres:16
+    command:
+      - postgres
+      - -c
+      - logging_collector=on
+      - -c
+      - log_destination=stderr
+      - -c
+      - log_directory=/var/log/postgresql
+      - -c
+      - log_filename=postgresql-%Y-%m-%d.log
+      - -c
+      - log_rotation_age=1d
+      - -c
+      - log_rotation_size=0
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-trading}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ${HOST_LOGS_DIR:-../logs}/postgresql:/var/log/postgresql
       - ./initdb:/docker-entrypoint-initdb.d:ro
     ports:
       - "${POSTGRES_PUBLISHED_PORT:-5433}:5432"
@@ -23,7 +38,9 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    command: python src/web/app.py
+    command:
+      - python
+      - src/web/app.py
     ports:
       - "${MONITOR_PORT:-5007}:5007"
     environment:
@@ -34,8 +51,10 @@ services:
       VNPY_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       VNPY_DATABASE_DATABASE: ${POSTGRES_DB:-trading}
       MONITOR_USE_POSTGRES: ${MONITOR_USE_POSTGRES:-1}
+      MONITOR_LOG_DIR: ${MONITOR_LOG_DIR:-/app/logs/monitor}
     volumes:
       - ${HOST_DATA_DIR:-../data}:/app/data
+      - ${HOST_LOGS_DIR:-../logs}/monitor:/app/logs/monitor
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,7 +72,7 @@ services:
         --mode ${RUN_MODE:-daemon}
         --config ${APP_CONFIG_PATH:-config/strategy_config.toml}
         --log-level ${APP_LOG_LEVEL:-INFO}
-        --log-dir ${APP_LOG_DIR:-data/logs}
+        --log-dir ${APP_LOG_DIR:-/app/logs/runner}
         ${APP_EXTRA_ARGS:-}
     environment:
       VNPY_DATABASE_DRIVER: postgresql
@@ -62,12 +81,15 @@ services:
       VNPY_DATABASE_USER: ${POSTGRES_USER:-postgres}
       VNPY_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       VNPY_DATABASE_DATABASE: ${POSTGRES_DB:-trading}
+      VNPY_LOG_DIR: ${VNPY_LOG_DIR:-/app/logs/vnpy}
       LOGGING_CONFIG_PATH: ${LOGGING_CONFIG_PATH:-/app/config/logging/logging.toml}
       DATA_RECORDER_SETTING_TOML: /app/config/general/data_recorder_setting.toml
       DATA_RECORDER_SETTING_JSON: /app/data/runtime/data_recorder_setting.json
     volumes:
       - ../config:/app/config:ro
       - ${HOST_DATA_DIR:-../data}:/app/data
+      - ${HOST_LOGS_DIR:-../logs}/runner:/app/logs/runner
+      - ${HOST_LOGS_DIR:-../logs}/vnpy:/app/logs/vnpy
     depends_on:
       postgres:
         condition: service_healthy
