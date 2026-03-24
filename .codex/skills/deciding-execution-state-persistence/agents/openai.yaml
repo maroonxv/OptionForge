@@ -1,0 +1,4 @@
+interface:
+  display_name: "Execution State Persistence"
+  short_description: "Decide whether strategy execution state should persist."
+  default_prompt: "Use $deciding-execution-state-persistence to review a strategy change and decide what execution state, if any, should persist."
